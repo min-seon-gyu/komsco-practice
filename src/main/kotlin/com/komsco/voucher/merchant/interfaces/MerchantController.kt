@@ -38,4 +38,28 @@ class MerchantController(
         val merchant = merchantService.reject(id)
         return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
     }
+
+    @PostMapping("/{id}/suspend")
+    fun suspend(@PathVariable id: Long): MerchantResponse {
+        val merchant = merchantService.suspend(id)
+        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
+    }
+
+    @PostMapping("/{id}/unsuspend")
+    fun unsuspend(@PathVariable id: Long): MerchantResponse {
+        val merchant = merchantService.unsuspend(id)
+        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
+    }
+
+    @PostMapping("/{id}/terminate")
+    fun terminate(@PathVariable id: Long): MerchantResponse {
+        val merchant = merchantService.terminate(id)
+        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
+    }
+
+    @GetMapping("/{id}")
+    fun getById(@PathVariable id: Long): MerchantResponse {
+        val merchant = merchantService.getById(id)
+        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
+    }
 }

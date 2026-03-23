@@ -61,6 +61,27 @@ class MerchantService(
         return merchant
     }
 
+    @Transactional
+    fun suspend(merchantId: Long): Merchant {
+        val merchant = getById(merchantId)
+        merchant.suspend()
+        return merchant
+    }
+
+    @Transactional
+    fun unsuspend(merchantId: Long): Merchant {
+        val merchant = getById(merchantId)
+        merchant.unsuspend()
+        return merchant
+    }
+
+    @Transactional
+    fun terminate(merchantId: Long): Merchant {
+        val merchant = getById(merchantId)
+        merchant.terminate()
+        return merchant
+    }
+
     fun getById(id: Long): Merchant =
         merchantRepository.findById(id)
             .orElseThrow { BusinessException(ErrorCode.ENTITY_NOT_FOUND) }
