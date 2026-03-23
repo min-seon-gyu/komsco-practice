@@ -15,7 +15,7 @@ class FailedEvent(
     @Column(nullable = false, columnDefinition = "TEXT")
     val payload: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "TEXT")
     val errorMessage: String,
 
     var retryCount: Int = 0,

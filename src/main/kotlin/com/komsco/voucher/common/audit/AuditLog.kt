@@ -54,7 +54,7 @@ class AuditLog(
     @Column(length = 64)
     val idempotencyKey: String? = null,
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "DATETIME(6)")
     val createdAt: LocalDateTime = LocalDateTime.now()
 ) {
     @Id
