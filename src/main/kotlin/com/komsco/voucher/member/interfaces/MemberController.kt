@@ -24,4 +24,16 @@ class MemberController(
     @GetMapping("/{id}")
     fun getById(@PathVariable id: Long): MemberResponse =
         MemberResponse.from(memberService.getById(id))
+
+    @PostMapping("/{id}/suspend")
+    fun suspend(@PathVariable id: Long): MemberResponse =
+        MemberResponse.from(memberService.suspend(id))
+
+    @PostMapping("/{id}/unsuspend")
+    fun unsuspend(@PathVariable id: Long): MemberResponse =
+        MemberResponse.from(memberService.unsuspend(id))
+
+    @PostMapping("/{id}/withdraw")
+    fun withdraw(@PathVariable id: Long): MemberResponse =
+        MemberResponse.from(memberService.withdraw(id))
 }

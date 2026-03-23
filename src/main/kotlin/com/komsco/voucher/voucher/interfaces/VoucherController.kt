@@ -5,8 +5,14 @@ import com.komsco.voucher.voucher.application.VoucherIssueService
 import com.komsco.voucher.voucher.application.VoucherRedemptionService
 import com.komsco.voucher.voucher.application.VoucherRefundService
 import com.komsco.voucher.voucher.application.VoucherWithdrawalService
+import com.komsco.voucher.voucher.domain.VoucherStatus
+import com.komsco.voucher.voucher.infrastructure.VoucherJpaRepository
+import com.komsco.voucher.voucher.infrastructure.VoucherQueryRepository
 import com.komsco.voucher.voucher.interfaces.dto.*
 import jakarta.validation.Valid
+import org.springframework.data.domain.Page
+import org.springframework.data.domain.Pageable
+import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
@@ -17,7 +23,26 @@ class VoucherController(
     private val redemptionService: VoucherRedemptionService,
     private val refundService: VoucherRefundService,
     private val withdrawalService: VoucherWithdrawalService,
+    private val voucherQueryRepository: VoucherQueryRepository,
+    private val voucherJpaRepository: VoucherJpaRepository,
 ) {
+
+    @GetMapping
+    fun search(
+        @RequestParam(required = false) memberId: Long?,
+        @RequestParam(required = false) regionId: Long?,
+        @RequestParam(required = false) status: VoucherStatus?,
+        @PageableDefault(size = 20) pageable: Pageable,
+    ): Page<VoucherResponse> =
+        voucherQueryRepository.findByConditions(memberId, regionId, status, pageable)
+            .map { VoucherResponse.from(it) }
+
+    @GetMapping("/{id}")
+    fun getById(@PathVariable id: Long): VoucherResponse =
+        VoucherResponse.from(
+            voucherJpaRepository.findById(id)
+                .orElseThrow { com.komsco.voucher.common.exception.BusinessException(com.komsco.voucher.common.exception.ErrorCode.ENTITY_NOT_FOUND) }
+        )
 
     @PostMapping("/purchase")
     @ResponseStatus(HttpStatus.CREATED)

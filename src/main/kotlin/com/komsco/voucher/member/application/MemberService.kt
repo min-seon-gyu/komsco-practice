@@ -54,6 +54,27 @@ class MemberService(
             .orElseThrow { BusinessException(ErrorCode.ENTITY_NOT_FOUND) }
 
     @Transactional
+    fun suspend(memberId: Long): Member {
+        val member = getById(memberId)
+        member.suspend()
+        return member
+    }
+
+    @Transactional
+    fun unsuspend(memberId: Long): Member {
+        val member = getById(memberId)
+        member.unsuspend()
+        return member
+    }
+
+    @Transactional
+    fun withdraw(memberId: Long): Member {
+        val member = getById(memberId)
+        member.withdraw()
+        return member
+    }
+
+    @Transactional
     fun promoteToMerchantOwner(memberId: Long): Member {
         val member = getById(memberId)
         member.role = MemberRole.MERCHANT_OWNER

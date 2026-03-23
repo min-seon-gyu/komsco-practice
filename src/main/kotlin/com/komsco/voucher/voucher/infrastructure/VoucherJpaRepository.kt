@@ -28,4 +28,7 @@ interface VoucherJpaRepository : JpaRepository<Voucher, Long> {
         @Param("now") now: LocalDateTime,
         limit: Pageable,
     ): List<Long>
+
+    @Query("SELECT COALESCE(SUM(v.faceValue), 0) FROM Voucher v WHERE v.regionId = :regionId AND v.purchasedAt >= :start AND v.purchasedAt < :end")
+    fun sumFaceValueByRegionAndMonth(regionId: Long, start: LocalDateTime, end: LocalDateTime): BigDecimal
 }

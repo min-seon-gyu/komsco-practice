@@ -45,7 +45,9 @@ class AuditEventListener(
             aggregateType = event.aggregateType,
             aggregateId = event.aggregateId,
             action = resolveAction(event.eventType),
-            createdAt = event.occurredAt
+            previousState = event.previousState,
+            currentState = event.currentState,
+            createdAt = event.occurredAt,
         )
         auditLogRepository.save(auditLog)
         log.info("Audit log saved: {} [{}] for {}:{}", event.eventType, severity, event.aggregateType, event.aggregateId)

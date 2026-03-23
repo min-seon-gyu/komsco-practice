@@ -42,5 +42,33 @@ class RegionService(
         regionRepository.findByRegionCode(code)
             ?: throw BusinessException(ErrorCode.ENTITY_NOT_FOUND)
 
+    @Transactional
+    fun updatePolicy(id: Long, request: CreateRegionRequest): Region {
+        val region = getById(id)
+        val newPolicy = RegionPolicy(
+            discountRate = request.discountRate,
+            purchaseLimitPerPerson = request.purchaseLimitPerPerson,
+            monthlyIssuanceLimit = request.monthlyIssuanceLimit,
+            refundThresholdRatio = request.refundThresholdRatio,
+            settlementPeriod = SettlementPeriod.valueOf(request.settlementPeriod)
+        )
+        region.updatePolicy(newPolicy)
+        return region
+    }
+
+    @Transactional
+    fun suspend(id: Long): Region {
+        val region = getById(id)
+        region.suspend()
+        return region
+    }
+
+    @Transactional
+    fun activate(id: Long): Region {
+        val region = getById(id)
+        region.activate()
+        return region
+    }
+
     fun findAll(): List<Region> = regionRepository.findAll()
 }

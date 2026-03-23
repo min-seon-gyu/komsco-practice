@@ -40,6 +40,7 @@ class VoucherRedemptionService(
                 if (voucher.isExpired()) throw BusinessException(ErrorCode.VOUCHER_EXPIRED)
                 if (voucher.balance < amount) throw BusinessException(ErrorCode.INSUFFICIENT_BALANCE)
 
+                val previousBalance = voucher.balance
                 voucher.redeem(amount)
 
                 val tx = transactionService.create(
@@ -58,7 +59,7 @@ class VoucherRedemptionService(
                 tx.complete()
 
                 eventPublisher.publishEvent(
-                    VoucherRedeemedEvent(voucherId, merchantId, amount, voucher.balance, tx.id)
+                    VoucherRedeemedEvent(voucherId, merchantId, amount, voucher.balance, tx.id, previousBalance)
                 )
 
                 meterRegistry.counter("voucher.redemption.count", "result", "success").increment()

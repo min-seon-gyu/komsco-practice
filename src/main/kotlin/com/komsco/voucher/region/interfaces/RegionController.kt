@@ -22,6 +22,18 @@ class RegionController(
     fun getById(@PathVariable id: Long): RegionResponse =
         RegionResponse.from(regionService.getById(id))
 
+    @PutMapping("/{id}/policy")
+    fun updatePolicy(@PathVariable id: Long, @Valid @RequestBody request: CreateRegionRequest): RegionResponse =
+        RegionResponse.from(regionService.updatePolicy(id, request))
+
+    @PostMapping("/{id}/suspend")
+    fun suspend(@PathVariable id: Long): RegionResponse =
+        RegionResponse.from(regionService.suspend(id))
+
+    @PostMapping("/{id}/activate")
+    fun activate(@PathVariable id: Long): RegionResponse =
+        RegionResponse.from(regionService.activate(id))
+
     @GetMapping
     fun findAll(): List<RegionResponse> =
         regionService.findAll().map { RegionResponse.from(it) }
