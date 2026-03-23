@@ -28,14 +28,10 @@ class SettlementService(
         val start = periodStart.atStartOfDay()
         val end = periodEnd.atTime(LocalTime.MAX)
 
-        val redemptionTotal = transactionRepository.sumAmountByMerchantAndTypeAndPeriod(
+        // COMPLETED 상태인 결제만 합산 (취소된 원 거래는 CANCELLED 상태이므로 자동 제외)
+        val totalAmount = transactionRepository.sumAmountByMerchantAndTypeAndPeriod(
             merchantId, TransactionType.REDEMPTION, TransactionStatus.COMPLETED, start, end
         )
-        val cancellationTotal = transactionRepository.sumAmountByMerchantAndTypeAndPeriod(
-            merchantId, TransactionType.CANCELLATION, TransactionStatus.COMPLETED, start, end
-        )
-
-        val totalAmount = redemptionTotal - cancellationTotal
 
         return settlementRepository.save(
             Settlement(
