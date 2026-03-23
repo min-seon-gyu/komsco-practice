@@ -53,6 +53,156 @@ merchant ─동기──→ transaction (정산 대상 거래 조회)
 
 ---
 
+## 구현 기능 상세
+
+### 1. 지자체 관리 (Region)
+
+지역사랑상품권은 지자체별로 독립 운영된다. 각 지자체는 고유한 정책(할인율, 구매한도, 발행한도, 환불 기준, 정산 주기)을 가진다.
+
+- **지자체 등록**: 지자체명, 지역코드(2자리), 정책 설정
+- **정책 수정**: 할인율, 1인 구매한도, 월 발행한도, 환불 기준비율(기본 60%), 정산 주기(일/주/월) 변경
+- **운영 상태 관리**: `ACTIVE` → `SUSPENDED` → `DEACTIVATED` 상태 전이
+- **정책은 Value Object(`RegionPolicy`)로 분리**: JPA `@Embeddable`로 매핑하여 도메인 의미를 보존
+
+### 2. 회원 관리 (Member)
+
+시민이 상품권을 구매하고 사용하기 위한 회원 체계.
+
+- **회원 가입**: 이메일 중복 검증, BCrypt 비밀번호 암호화
+- **JWT 인증**: 로그인 시 JWT 토큰 발급, 토큰에 memberId + role 포함
+- **Role 기반 권한**: `USER` / `MERCHANT_OWNER` / `ADMIN` 세 가지 역할
+- **상태 관리**: `PENDING` → `ACTIVE` → `SUSPENDED` → `WITHDRAWN` 상태 머신
+- **관리자 기능**: 회원 정지(`suspend`), 정지 해제(`unsuspend`), 탈퇴 처리(`withdraw`)
+
+### 3. 가맹점 관리 (Merchant)
+
+지역사랑상품권을 받을 수 있는 가맹점의 등록부터 해지까지의 전체 생애주기.
+
+- **가맹점 등록**: 사업자번호, 업종, 소속 지자체(Region) 지정. 등록 시 `PENDING_APPROVAL` 상태
+- **심사 플로우**: 관리자가 `approve`(승인) 또는 `reject`(거절). 거절된 가맹점은 새 레코드로 재신청 가능 (기존 기록 보존)
+- **운영 상태 관리**: `PENDING_APPROVAL` → `APPROVED` / `REJECTED`, `APPROVED` → `SUSPENDED` → `TERMINATED`
+- **상태 전이 검증**: 도메인 엔티티 내부에서 잘못된 전이 시 예외 발생 (`PENDING`에서 `TERMINATED`로 바로 전이 불가)
+- **이벤트 발행**: 승인 시 `MerchantApprovedEvent` → HIGH 등급 감사 로그 자동 기록
+
+### 4. 상품권 발행 (Voucher Issuance)
+
+시민이 지자체의 상품권을 구매(발행)하는 기능. 한도 초과를 분산 환경에서도 방지한다.
+
+- **상품권 코드 생성**: `SecureRandom` 기반 16자리 + Luhn mod 36 체크 디짓 (예: `SN-A3K9M2X7P1B4Q8R5`)
+- **1인 구매한도 검증**: Redisson 분산락(`member:purchase:{memberId}`)으로 동시 구매 직렬화 후 DB 합산 검증
+- **지자체 월 발행한도 검증**: Redis 원자적 카운터(`INCRBY`)로 락 없이 한도 검증. 초과 시 `DECRBY`로 롤백
+  - 데드락 방지: 분산락은 Member 1개만 사용, Region 한도는 원자적 카운터로 별도 처리
+  - Redis 재시작 대비: 매시간 배치로 DB 발행액을 Redis 카운터에 동기화
+- **원장 기록**: 구매와 동시에 `LedgerEntry` 2행(DEBIT: VOUCHER_BALANCE, CREDIT: MEMBER_CASH) 동기 생성
+- **멱등키 적용**: `Idempotency-Key` 헤더로 중복 구매 방지
+
+### 5. 상품권 결제 — 부분 사용 (Voucher Redemption)
+
+가맹점에서 상품권으로 결제하는 핵심 기능. 동시성 제어의 핵심 지점.
+
+- **부분 사용**: 50,000원 상품권으로 30,000원 결제 → 잔액 20,000원 유지. 여러 번 나누어 사용 가능
+- **이중 방어 동시성 제어**:
+  1. Redisson 분산락(`voucher:{id}`)으로 1차 직렬화 (5초 대기, 10초 보유)
+  2. DB `SELECT FOR UPDATE`로 2차 비관적 락 (Redis 장애 시 방어)
+- **상태 자동 전이**: `ACTIVE` → `PARTIALLY_USED` (부분 사용), `PARTIALLY_USED` → `EXHAUSTED` (전액 소진)
+- **검증 순서**: 분산락 획득 → DB 락 → 사용 가능 상태 확인 → 만료 여부 확인 → 잔액 확인 → 차감
+- **원장 기록**: 동일 DB 트랜잭션 내에서 `LedgerEntry` 2행 동기 생성 (DEBIT: MERCHANT_RECEIVABLE, CREDIT: VOUCHER_BALANCE)
+- **메트릭**: 결제 처리 시간(`voucher.redemption.duration`), 성공/실패 건수(`voucher.redemption.count`)
+- **멱등키 적용**: 네트워크 타임아웃으로 인한 중복 결제 방지
+
+### 6. 잔액 환불 (Balance Refund)
+
+지역사랑상품권 고유 정책: 60% 이상 사용한 상품권의 잔액을 현금으로 환불.
+
+- **환불 조건 검증**: `usageRatio = (faceValue - balance) / faceValue ≥ 0.60` (Region 정책에서 비율 조회)
+- **상태 전이**: `PARTIALLY_USED` → `REFUND_REQUESTED` → `REFUNDED`
+- **잔액 처리**: 잔액 전액을 환불하고 balance를 0으로 설정
+- **원장 기록**: DEBIT: REFUND_PAYABLE, CREDIT: VOUCHER_BALANCE
+- **분산락**: 환불 처리 중 결제 요청 경합 방지 (`voucher:{id}` 락)
+- **경계값 검증**: 59% → 거절, 60% → 허용, 61% → 허용 (통합 테스트로 검증)
+
+### 7. 청약철회 (Withdrawal)
+
+전자상거래법에 따른 구매 후 7일 이내 전액 환불. 잔액환불과는 별개의 독립 프로세스.
+
+- **철회 조건**: `ACTIVE` 상태(미사용) + 구매 후 7일 이내 (`purchasedAt + 7일 ≥ now`)
+- **잔액환불과의 차이**: 청약철회는 미사용 상품권의 전액 환불, 잔액환불은 60%+ 사용 상품권의 잔액 환불
+- **상태 전이**: `ACTIVE` → `WITHDRAWAL_REQUESTED` → `WITHDRAWN`
+- **원장 기록**: DEBIT: REFUND_PAYABLE, CREDIT: VOUCHER_BALANCE (전액)
+- **경계값 검증**: 7일째 → 허용, 8일째 → 거절 (통합 테스트로 검증)
+
+### 8. 거래 취소 — 보상 트랜잭션 (Compensating Transaction)
+
+기존 거래를 **삭제하거나 수정하지 않고** 역방향 보상 트랜잭션을 생성하여 취소 처리.
+
+- **보상 트랜잭션 생성**: `TransactionType.CANCELLATION` + `originalTransactionId`로 원 거래 연결
+- **역방향 원장**: 원 거래의 차변/대변을 반대로 기록 (DEBIT: VOUCHER_BALANCE, CREDIT: MERCHANT_RECEIVABLE)
+- **잔액 복원**: `voucher.restoreBalance(amount)` — 취소된 금액만큼 잔액 증가, 상태 자동 복귀
+- **원 거래 상태**: `COMPLETED` → `CANCEL_REQUESTED` → `CANCELLED` (원 거래의 금액/내용은 불변)
+- **감사 추적성**: 원 거래 + 보상 거래가 모두 원장에 보존되어, 감사 시 "왜 금액이 변경되었는가"를 증명 가능
+- **정산 자동 반영**: 취소된 거래는 `CANCELLED` 상태이므로 정산 시 `COMPLETED` 조건에서 자동 제외
+
+### 9. 만료 처리 배치 (Expiry Scheduler)
+
+유효기간이 지난 상품권을 자동으로 만료 처리하고, 잔액을 만료 계정으로 이동.
+
+- **스케줄링**: `@Scheduled(cron = "0 */5 * * * *")` — 5분마다 실행
+- **건별 독립 트랜잭션**: `@Transactional(propagation = REQUIRES_NEW)` — 1건 실패해도 나머지 정상 처리
+- **경합 방지**: 만료 대상 ID 목록을 먼저 조회 → 건별로 `SELECT FOR UPDATE` 후 처리
+- **이중 체크**: 락 획득 후 `isUsable()` 재확인 (조회 ~ 락 사이에 다른 결제가 처리될 수 있음)
+- **원장 기록**: 잔액이 남아있는 경우 DEBIT: EXPIRED_VOUCHER, CREDIT: VOUCHER_BALANCE
+- **balance 초기화**: 만료 시 잔액을 0으로 설정
+
+### 10. 가맹점 정산 (Settlement)
+
+가맹점이 받을 정산 금액을 기간별로 계산하고 확정하는 프로세스.
+
+- **정산 금액 계산**: 해당 기간의 `COMPLETED` 상태 결제 합산 (취소된 거래는 `CANCELLED` 상태이므로 자동 제외)
+- **정산 주기**: Region 단위로 설정 (일/주/월), 역월 기준 (KST)
+- **중복 방지**: `(merchantId, periodStart, periodEnd)` Unique Constraint
+- **이의 제기 플로우**: `PENDING` → `DISPUTED` (사유 기록) → `CONFIRMED` (이의 해결)
+- **정산 확정 이벤트**: `SettlementConfirmedEvent` 발행 → CRITICAL 감사 로그 자동 기록
+- **상태 머신**: `PENDING` → `CONFIRMED` → `PAID`, `PENDING` → `DISPUTED` → `CONFIRMED`
+
+### 11. 복식부기 원장 및 정합성 검증 (Ledger & Verification)
+
+프로젝트의 가장 핵심적인 재무 무결성 보장 체계.
+
+- **2행 모델**: 모든 금전 변동마다 DEBIT 1행 + CREDIT 1행 = 2행의 `LedgerEntry` 생성
+- **불변 엔티티**: `@Immutable` 어노테이션으로 Hibernate의 UPDATE/DELETE 원천 차단
+- **계정 코드 체계**: `MEMBER_CASH`, `VOUCHER_BALANCE`, `MERCHANT_RECEIVABLE`, `EXPIRED_VOUCHER`, `REFUND_PAYABLE`, `SETTLEMENT_PAYABLE`, `REVENUE_DISCOUNT`
+- **동기 기록 원칙**: 이벤트 리스너가 아닌 서비스 내 직접 호출로 잔액 변경과 같은 DB 트랜잭션에서 처리
+- **정합성 검증 배치** (`LedgerVerificationService`):
+  - 매일 02:00 실행 (`REPEATABLE_READ` 격리 수준)
+  - 글로벌 검증: `sum(전체 DEBIT) == sum(전체 CREDIT)`
+  - 건별 검증: 각 Voucher의 `balance` 캐시 vs 해당 Voucher 관련 원장 엔트리 합산 비교
+  - 불일치 발견 시: **자동 수정하지 않음** — CRITICAL 감사 로그 + 관리자 알림 (사람이 판단)
+- **관리자 조회 API**: 거래별 원장 조회, 계정별 잔액 조회, 수동 정합성 검증 트리거
+
+### 12. 멱등키 처리 (Idempotency)
+
+네트워크 불안정으로 인한 중복 요청을 안전하게 처리하는 체계.
+
+- **대상 API**: 구매, 결제, 환불, 청약철회, 거래 취소 (금전 관련 전체)
+- **이중 저장**: Redis TTL 24시간(1차, 빠른 감지) + DB(2차, Redis 장애 대비)
+- **응답 보존**: 원래 응답 본문 + HTTP 상태코드를 함께 캐시하여 중복 요청 시 동일 응답 반환
+- **자동 캡처**: `@Idempotent` 어노테이션 + `ResponseBodyAdvice`로 컨트롤러 코드 수정 없이 적용
+- **`Idempotency-Key` 헤더**: 클라이언트가 UUID 기반 멱등키를 요청마다 전달
+
+### 13. 감사 로그 체계 (Audit Log)
+
+모든 비즈니스 이벤트를 등급별로 기록하는 감사 추적 시스템.
+
+- **자동 기록**: 도메인 이벤트 발행 시 `AuditEventListener`가 자동으로 감사 로그 생성
+- **등급별 처리**:
+  - `CRITICAL` (발행/결제/환불/취소): `BEFORE_COMMIT` — 감사 실패 시 비즈니스 트랜잭션도 롤백
+  - `HIGH/MEDIUM` (승인/수정/만료): `AFTER_COMMIT` + `REQUIRES_NEW` — 별도 트랜잭션
+- **실패 복원**: `AFTER_COMMIT` 리스너 실패 시 `FailedEvent` 테이블에 기록 → 스케줄러가 자동 재처리
+- **상태 추적**: `previousState`/`currentState`를 JSON으로 저장하여 변경 전후 상태 비교 가능
+- **MySQL JSON Column**: `previous_state`, `current_state`, `metadata` 필드에 JSON 타입 활용
+
+---
+
 ## 기술적 의사결정
 
 ### 1. 왜 복식부기 원장인가
