@@ -1,0 +1,67 @@
+package com.komsco.voucher.merchant.application
+
+import com.komsco.voucher.common.exception.BusinessException
+import com.komsco.voucher.common.exception.ErrorCode
+import com.komsco.voucher.merchant.domain.Settlement
+import com.komsco.voucher.merchant.infrastructure.SettlementJpaRepository
+import com.komsco.voucher.transaction.domain.TransactionStatus
+import com.komsco.voucher.transaction.domain.TransactionType
+import com.komsco.voucher.transaction.infrastructure.TransactionJpaRepository
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
+import java.time.LocalDate
+import java.time.LocalTime
+
+@Service
+@Transactional(readOnly = true)
+class SettlementService(
+    private val settlementRepository: SettlementJpaRepository,
+    private val transactionRepository: TransactionJpaRepository,
+) {
+
+    @Transactional
+    fun calculate(merchantId: Long, periodStart: LocalDate, periodEnd: LocalDate): Settlement {
+        // Check duplicate
+        settlementRepository.findByMerchantIdAndPeriodStartAndPeriodEnd(merchantId, periodStart, periodEnd)
+            ?.let { throw BusinessException(ErrorCode.INVALID_INPUT, "이미 해당 기간 정산이 존재합니다") }
+
+        val start = periodStart.atStartOfDay()
+        val end = periodEnd.atTime(LocalTime.MAX)
+
+        val redemptionTotal = transactionRepository.sumAmountByMerchantAndTypeAndPeriod(
+            merchantId, TransactionType.REDEMPTION, TransactionStatus.COMPLETED, start, end
+        )
+        val cancellationTotal = transactionRepository.sumAmountByMerchantAndTypeAndPeriod(
+            merchantId, TransactionType.CANCELLATION, TransactionStatus.COMPLETED, start, end
+        )
+
+        val totalAmount = redemptionTotal - cancellationTotal
+
+        return settlementRepository.save(
+            Settlement(
+                merchantId = merchantId,
+                periodStart = periodStart,
+                periodEnd = periodEnd,
+                totalAmount = totalAmount,
+            )
+        )
+    }
+
+    @Transactional
+    fun confirm(settlementId: Long): Settlement {
+        val settlement = getById(settlementId)
+        settlement.confirm()
+        return settlement
+    }
+
+    @Transactional
+    fun dispute(settlementId: Long, reason: String): Settlement {
+        val settlement = getById(settlementId)
+        settlement.dispute(reason)
+        return settlement
+    }
+
+    fun getById(id: Long): Settlement =
+        settlementRepository.findById(id)
+            .orElseThrow { BusinessException(ErrorCode.ENTITY_NOT_FOUND) }
+}
