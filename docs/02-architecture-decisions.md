@@ -10,15 +10,20 @@ com.komsco.voucher/
 │   │   └── DomainEvent.kt             (이벤트 베이스 클래스)
 │   ├── exception/
 │   │   ├── BusinessException.kt
-│   │   └── ErrorCode.kt
+│   │   ├── ErrorCode.kt
+│   │   └── GlobalExceptionHandler.kt  (@RestControllerAdvice)
 │   ├── idempotency/
 │   │   ├── IdempotencyKey.kt           (엔티티)
 │   │   ├── IdempotencyRepository.kt
-│   │   └── IdempotencyInterceptor.kt   (AOP)
+│   │   ├── IdempotencyInterceptor.kt   (AOP)
+│   │   └── Idempotent.kt              (커스텀 어노테이션)
 │   └── audit/
 │       ├── AuditLog.kt                 (엔티티)
+│       ├── AuditSeverity.kt            (CRITICAL, HIGH, MEDIUM)
 │       ├── AuditLogRepository.kt
-│       └── AuditEventListener.kt
+│       ├── AuditEventListener.kt
+│       ├── FailedEvent.kt              (실패 이벤트 엔티티, 재처리 대상)
+│       └── FailedEventRepository.kt
 │
 ├── region/                          ← 지자체 모듈
 │   ├── domain/
@@ -39,7 +44,7 @@ com.komsco.voucher/
 ├── member/                          ← 회원 모듈
 │   ├── domain/
 │   │   ├── Member.kt                   (Aggregate Root)
-│   │   ├── MemberStatus.kt
+│   │   ├── MemberStatus.kt             (PENDING, ACTIVE, SUSPENDED, WITHDRAWN)
 │   │   └── MemberRole.kt              (USER, MERCHANT_OWNER, ADMIN)
 │   ├── application/
 │   │   └── MemberService.kt
@@ -48,14 +53,18 @@ com.komsco.voucher/
 │   └── interfaces/
 │       ├── MemberController.kt
 │       └── dto/
+│           ├── MemberRequest.kt        (RegisterMemberRequest, LoginRequest)
+│           └── MemberResponse.kt
 │
 ├── merchant/                        ← 가맹점 모듈
 │   ├── domain/
 │   │   ├── Merchant.kt                 (Aggregate Root)
 │   │   ├── MerchantStatus.kt           (PENDING_APPROVAL, APPROVED, REJECTED, SUSPENDED, TERMINATED)
 │   │   ├── MerchantCategory.kt         (업종)
+│   │   ├── Settlement.kt               (정산 엔티티)
 │   │   └── event/
-│   │       └── MerchantApprovedEvent.kt
+│   │       ├── MerchantApprovedEvent.kt
+│   │       └── SettlementConfirmedEvent.kt
 │   ├── application/
 │   │   ├── MerchantService.kt
 │   │   └── SettlementService.kt
@@ -64,8 +73,7 @@ com.komsco.voucher/
 │   │   └── SettlementJpaRepository.kt
 │   └── interfaces/
 │       ├── MerchantController.kt
-│       ├── SettlementController.kt
-│       └── dto/
+│       └── SettlementController.kt
 │
 ├── voucher/                         ← 상품권 모듈 (핵심)
 │   ├── domain/
@@ -83,7 +91,8 @@ com.komsco.voucher/
 │   │   ├── VoucherRedemptionService.kt (사용/결제)
 │   │   ├── VoucherRefundService.kt     (잔액 환불)
 │   │   ├── VoucherWithdrawalService.kt (청약철회)
-│   │   └── VoucherExpiryScheduler.kt   (만료 배치)
+│   │   ├── VoucherExpiryScheduler.kt   (만료 배치)
+│   │   └── RegionCounterSyncScheduler.kt (Redis 카운터 동기화 배치, 매시간)
 │   ├── infrastructure/
 │   │   ├── VoucherJpaRepository.kt
 │   │   ├── VoucherQueryRepository.kt   (QueryDSL)
@@ -91,22 +100,28 @@ com.komsco.voucher/
 │   └── interfaces/
 │       ├── VoucherController.kt
 │       └── dto/
+│           ├── VoucherRequest.kt
+│           └── VoucherResponse.kt
 │
 ├── transaction/                     ← 거래 모듈
 │   ├── domain/
 │   │   ├── Transaction.kt              (Aggregate Root)
-│   │   ├── TransactionStatus.kt
-│   │   └── TransactionType.kt          (PURCHASE, REDEMPTION, REFUND, WITHDRAWAL, CANCELLATION)
+│   │   ├── TransactionStatus.kt        (TransactionStatus + TransactionType 동일 파일)
+│   │   └── event/
+│   │       └── TransactionCancelledEvent.kt
 │   ├── application/
-│   │   └── TransactionService.kt
-│   └── infrastructure/
-│       └── TransactionJpaRepository.kt
+│   │   ├── TransactionService.kt
+│   │   └── TransactionCancelService.kt (보상 트랜잭션 기반 취소)
+│   ├── infrastructure/
+│   │   └── TransactionJpaRepository.kt
+│   └── interfaces/
+│       └── TransactionController.kt    (DTO 인라인 정의)
 │
 ├── ledger/                          ← 원장 모듈
 │   ├── domain/
 │   │   ├── LedgerEntry.kt              (Immutable Entity)
-│   │   ├── LedgerEntryType.kt
-│   │   └── AccountCode.kt             (Value Object: 계정 코드)
+│   │   ├── LedgerEntryType.kt          (LedgerEntryType + LedgerEntrySide 동일 파일)
+│   │   └── AccountCode.kt             (enum: MEMBER_CASH, VOUCHER_BALANCE, MERCHANT_RECEIVABLE 등)
 │   ├── application/
 │   │   ├── LedgerService.kt            (원장 기록 — 동기 호출, 이벤트 X)
 │   │   └── LedgerVerificationService.kt(정합성 검증 배치)
@@ -116,11 +131,11 @@ com.komsco.voucher/
 │       └── LedgerQueryController.kt    (관리자 조회)
 │
 └── config/                          ← 인프라 설정
-    ├── JpaConfig.kt
+    ├── JwtTokenProvider.kt             (JWT 토큰 생성/검증)
     ├── RedisConfig.kt
     ├── SecurityConfig.kt
     ├── QueryDslConfig.kt
-    └── EventConfig.kt
+    └── SwaggerConfig.kt               (OpenAPI/Swagger 문서화)
 ```
 
 **모듈 간 핵심 의존관계:**
@@ -348,4 +363,4 @@ CREATE TABLE audit_logs (
 
 ---
 
-**2단계 핵심 결정:** 6개 도메인 모듈(transaction 추가) + 공통 모듈, 원장은 동기 호출(이벤트 X), 발행 시 Member 락 + Region Redis 카운터(데드락 제거), 이벤트는 감사/알림/정산 큐에만 사용, 운영 메트릭 기반 구축.
+**2단계 핵심 결정:** 6개 도메인 모듈(region, member, merchant, voucher, transaction, ledger) + 공통 모듈 + config. 원장은 동기 호출(이벤트 X), 발행 시 Member 락 + Region Redis 카운터(데드락 제거), 이벤트는 감사/알림/정산 큐에만 사용, 운영 메트릭 기반 구축. RegionCounterSyncScheduler로 매시간 Redis 카운터 동기화.

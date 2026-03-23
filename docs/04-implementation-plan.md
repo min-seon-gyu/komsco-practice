@@ -1,12 +1,12 @@
 # 모바일 상품권 시스템 구현 계획
 
-> **에이전트 작업자용:** superpowers:subagent-driven-development (권장) 또는 superpowers:executing-plans 스킬을 사용하여 태스크별로 구현합니다. 체크박스(`- [ ]`) 형식으로 진행 상황을 추적합니다.
+> **상태: 전체 구현 완료** — 16개 태스크 모두 완료, 27개 커밋, 소스 85개 파일, 테스트 13개 파일
 
 **목표:** 지역사랑상품권의 발행-유통-정산 전 생애주기를 관리하는 백엔드 시스템 구축. 재무 무결성, 감사 추적성, 동시성 안전을 KOMSCO 포트폴리오로 증명.
 
-**아키텍처:** Aggregate 중심 모듈러 모놀리스, 6개 도메인 모듈 (region, member, merchant, voucher, transaction, ledger) + 공통 모듈. 하이브리드 복식부기 + 동기 원장 기록. 도메인 이벤트는 감사/알림 부수효과에만 사용.
+**아키텍처:** Aggregate 중심 모듈러 모놀리스, 6개 도메인 모듈 (region, member, merchant, voucher, transaction, ledger) + 공통 모듈 + config. 하이브리드 복식부기 + 동기 원장 기록. 도메인 이벤트는 감사/알림 부수효과에만 사용.
 
-**기술 스택:** Kotlin, Spring Boot 3.x, JPA + QueryDSL, MySQL 8.x, Redis (Redisson), JUnit 5 + Kotest + Testcontainers, Gradle Kotlin DSL, Docker Compose
+**기술 스택:** Kotlin 1.9.23, Spring Boot 3.2.5, JPA + QueryDSL 5.1.0, MySQL 8.x, Redis (Redisson 3.27.2), JWT (jjwt 0.12.5), Swagger/OpenAPI, JUnit 5 + Kotest 5.8.1 + Testcontainers 1.19.7, Gradle Kotlin DSL, Docker Compose
 
 **스펙 문서:**
 - `docs/01-domain-design.md` — 도메인 엔티티, 상태 머신, 불변식
@@ -33,7 +33,7 @@
 - Create: `src/main/kotlin/com/komsco/voucher/VoucherApplication.kt`
 - Create: `.gitignore`
 
-- [ ] **Step 1: Initialize Gradle project**
+- [x] **Step 1: Initialize Gradle project**
 
 Create `settings.gradle.kts`:
 ```kotlin
@@ -125,7 +125,7 @@ tasks.withType<Test> {
 }
 ```
 
-- [ ] **Step 2: Create Docker Compose**
+- [x] **Step 2: Create Docker Compose**
 
 Create `docker-compose.yml`:
 ```yaml
@@ -155,7 +155,7 @@ volumes:
   mysql-data:
 ```
 
-- [ ] **Step 3: Create application configs**
+- [x] **Step 3: Create application configs**
 
 Create `src/main/resources/application.yml`:
 ```yaml
@@ -196,7 +196,7 @@ spring:
       ddl-auto: create-drop
 ```
 
-- [ ] **Step 4: Create main application class**
+- [x] **Step 4: Create main application class**
 
 Create `src/main/kotlin/com/komsco/voucher/VoucherApplication.kt`:
 ```kotlin
@@ -214,7 +214,7 @@ fun main(args: Array<String>) {
 }
 ```
 
-- [ ] **Step 5: Create .gitignore**
+- [x] **Step 5: Create .gitignore**
 
 ```
 .gradle/
@@ -230,7 +230,7 @@ out/
 src/main/generated/
 ```
 
-- [ ] **Step 6: Create Testcontainers base test config**
+- [x] **Step 6: Create Testcontainers base test config**
 
 Create `src/test/kotlin/com/komsco/voucher/support/IntegrationTestSupport.kt`:
 ```kotlin
@@ -276,17 +276,17 @@ abstract class IntegrationTestSupport {
 }
 ```
 
-- [ ] **Step 7: Verify project builds**
+- [x] **Step 7: Verify project builds**
 
 Run: `cd /Users/seongyumin/Documents/study/komsco && ./gradlew build`
 Expected: BUILD SUCCESSFUL
 
-- [ ] **Step 8: Verify Docker Compose starts**
+- [x] **Step 8: Verify Docker Compose starts**
 
 Run: `cd /Users/seongyumin/Documents/study/komsco && docker compose up -d && docker compose ps`
 Expected: mysql and redis containers running
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git init
@@ -310,7 +310,7 @@ git commit -m "feat: initialize project with Spring Boot 3.x, Kotlin, Docker Com
 - Create: `src/main/kotlin/com/komsco/voucher/common/audit/AuditSeverity.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/common/audit/AuditEventListenerTest.kt`
 
-- [ ] **Step 1: Write BaseEntity test**
+- [x] **Step 1: Write BaseEntity test**
 
 Create `src/test/kotlin/com/komsco/voucher/common/domain/BaseEntityTest.kt`:
 ```kotlin
@@ -329,12 +329,12 @@ class BaseEntityTest : DescribeSpec({
 })
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
 Run: `./gradlew test --tests "com.komsco.voucher.common.domain.BaseEntityTest"`
 Expected: FAIL — BaseEntity class not found
 
-- [ ] **Step 3: Implement BaseEntity**
+- [x] **Step 3: Implement BaseEntity**
 
 Create `src/main/kotlin/com/komsco/voucher/common/domain/BaseEntity.kt`:
 ```kotlin
@@ -367,12 +367,12 @@ abstract class BaseEntity {
 }
 ```
 
-- [ ] **Step 4: Run test — expect PASS**
+- [x] **Step 4: Run test — expect PASS**
 
 Run: `./gradlew test --tests "com.komsco.voucher.common.domain.BaseEntityTest"`
 Expected: PASS
 
-- [ ] **Step 5: Implement DomainEvent base class**
+- [x] **Step 5: Implement DomainEvent base class**
 
 Create `src/main/kotlin/com/komsco/voucher/common/domain/DomainEvent.kt`:
 ```kotlin
@@ -391,7 +391,7 @@ abstract class DomainEvent(
 }
 ```
 
-- [ ] **Step 6: Implement ErrorCode and BusinessException**
+- [x] **Step 6: Implement ErrorCode and BusinessException**
 
 Create `src/main/kotlin/com/komsco/voucher/common/exception/ErrorCode.kt`:
 ```kotlin
@@ -478,7 +478,7 @@ class GlobalExceptionHandler {
 }
 ```
 
-- [ ] **Step 7: Write AuditLog entity test**
+- [x] **Step 7: Write AuditLog entity test**
 
 Create `src/test/kotlin/com/komsco/voucher/common/audit/AuditEventListenerTest.kt`:
 ```kotlin
@@ -527,12 +527,12 @@ class AuditEventListenerTest : IntegrationTestSupport() {
 }
 ```
 
-- [ ] **Step 8: Run test — expect FAIL**
+- [x] **Step 8: Run test — expect FAIL**
 
 Run: `./gradlew test --tests "com.komsco.voucher.common.audit.AuditEventListenerTest"`
 Expected: FAIL — AuditLog classes not found
 
-- [ ] **Step 9: Implement AuditLog entity and listener**
+- [x] **Step 9: Implement AuditLog entity and listener**
 
 Create `src/main/kotlin/com/komsco/voucher/common/audit/AuditSeverity.kt`:
 ```kotlin
@@ -723,12 +723,12 @@ class AuditEventListener(
 }
 ```
 
-- [ ] **Step 10: Run test — expect PASS**
+- [x] **Step 10: Run test — expect PASS**
 
 Run: `./gradlew test --tests "com.komsco.voucher.common.audit.AuditEventListenerTest"`
 Expected: PASS
 
-- [ ] **Step 11: Commit**
+- [x] **Step 11: Commit**
 
 ```bash
 git add -A
@@ -751,7 +751,7 @@ git commit -m "feat: add common module with BaseEntity, exception hierarchy, aud
 - Test: `src/test/kotlin/com/komsco/voucher/region/domain/RegionTest.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/region/application/RegionServiceTest.kt`
 
-- [ ] **Step 1: Write Region domain test**
+- [x] **Step 1: Write Region domain test**
 
 Create `src/test/kotlin/com/komsco/voucher/region/domain/RegionTest.kt`:
 ```kotlin
@@ -808,12 +808,12 @@ fun createRegion(status: RegionStatus = RegionStatus.ACTIVE): Region {
 }
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
 Run: `./gradlew test --tests "com.komsco.voucher.region.domain.RegionTest"`
 Expected: FAIL
 
-- [ ] **Step 3: Implement Region domain**
+- [x] **Step 3: Implement Region domain**
 
 Create `src/main/kotlin/com/komsco/voucher/region/domain/RegionStatus.kt`:
 ```kotlin
@@ -910,12 +910,12 @@ class Region(
 }
 ```
 
-- [ ] **Step 4: Run domain test — expect PASS**
+- [x] **Step 4: Run domain test — expect PASS**
 
 Run: `./gradlew test --tests "com.komsco.voucher.region.domain.RegionTest"`
 Expected: PASS
 
-- [ ] **Step 5: Implement Region service, repository, controller, DTOs**
+- [x] **Step 5: Implement Region service, repository, controller, DTOs**
 
 Create `src/main/kotlin/com/komsco/voucher/region/infrastructure/RegionJpaRepository.kt`:
 ```kotlin
@@ -1060,7 +1060,7 @@ class RegionController(
 }
 ```
 
-- [ ] **Step 6: Write integration test for RegionService**
+- [x] **Step 6: Write integration test for RegionService**
 
 Create `src/test/kotlin/com/komsco/voucher/region/application/RegionServiceTest.kt`:
 ```kotlin
@@ -1100,12 +1100,12 @@ class RegionServiceTest : IntegrationTestSupport() {
 }
 ```
 
-- [ ] **Step 7: Run all tests — expect PASS**
+- [x] **Step 7: Run all tests — expect PASS**
 
 Run: `./gradlew test --tests "com.komsco.voucher.region.*"`
 Expected: PASS
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1129,13 +1129,13 @@ git commit -m "feat: add Region module with entity, policy, service, and API"
 
 Follow the same TDD pattern as Task 3:
 
-- [ ] **Step 1: Write Member domain state transition tests**
+- [x] **Step 1: Write Member domain state transition tests**
 
 Test cases: PENDING→ACTIVE, ACTIVE→SUSPENDED, SUSPENDED→ACTIVE, ACTIVE→WITHDRAWN, invalid transitions throw BusinessException.
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
-- [ ] **Step 3: Implement Member entity with state machine**
+- [x] **Step 3: Implement Member entity with state machine**
 
 ```kotlin
 @Entity
@@ -1157,14 +1157,14 @@ class Member(
 `MemberStatus`: `PENDING, ACTIVE, SUSPENDED, WITHDRAWN`
 `MemberRole`: `USER, MERCHANT_OWNER, ADMIN`
 
-- [ ] **Step 4: Run domain tests — expect PASS**
+- [x] **Step 4: Run domain tests — expect PASS**
 
-- [ ] **Step 5: Implement MemberService, repository, controller, DTOs**
+- [x] **Step 5: Implement MemberService, repository, controller, DTOs**
 
 Service handles: register, login (JWT), getById, suspend, withdraw.
 For JWT: simple `JwtTokenProvider` utility in `config/` that generates/validates tokens. Use `io.jsonwebtoken`.
 
-- [ ] **Step 6: Implement SecurityConfig**
+- [x] **Step 6: Implement SecurityConfig**
 
 ```kotlin
 @Configuration
@@ -1174,11 +1174,11 @@ class SecurityConfig : SecurityFilterChain { ... }
 
 For the portfolio, use a simple stateless JWT filter. Permit all for now, secure specific endpoints in later tasks.
 
-- [ ] **Step 7: Write integration test for MemberService**
+- [x] **Step 7: Write integration test for MemberService**
 
-- [ ] **Step 8: Run all tests — expect PASS**
+- [x] **Step 8: Run all tests — expect PASS**
 
-- [ ] **Step 9: Commit**
+- [x] **Step 9: Commit**
 
 ```bash
 git add -A
@@ -1199,16 +1199,16 @@ git commit -m "feat: add Member module with JWT auth and role-based security"
 - Create: `src/main/kotlin/com/komsco/voucher/merchant/interfaces/MerchantController.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/merchant/domain/MerchantTest.kt`
 
-- [ ] **Step 1: Write Merchant domain tests**
+- [x] **Step 1: Write Merchant domain tests**
 
 Test all state transitions from spec:
 - PENDING_APPROVAL→APPROVED, PENDING_APPROVAL→REJECTED
 - APPROVED→SUSPENDED, SUSPENDED→APPROVED, SUSPENDED→TERMINATED, APPROVED→TERMINATED
 - Invalid transitions throw BusinessException
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
-- [ ] **Step 3: Implement Merchant entity**
+- [x] **Step 3: Implement Merchant entity**
 
 ```kotlin
 @Entity
@@ -1243,15 +1243,15 @@ class MerchantApprovedEvent(
 }
 ```
 
-- [ ] **Step 4: Run domain tests — expect PASS**
+- [x] **Step 4: Run domain tests — expect PASS**
 
-- [ ] **Step 5: Implement MerchantService (register, approve, reject, re-apply as new record), repository, controller**
+- [x] **Step 5: Implement MerchantService (register, approve, reject, re-apply as new record), repository, controller**
 
-- [ ] **Step 6: Write integration test verifying MerchantApprovedEvent triggers audit log**
+- [x] **Step 6: Write integration test verifying MerchantApprovedEvent triggers audit log**
 
-- [ ] **Step 7: Run all tests — expect PASS**
+- [x] **Step 7: Run all tests — expect PASS**
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1276,7 +1276,7 @@ git commit -m "feat: add Merchant module with state machine and approval flow"
 - Test: `src/test/kotlin/com/komsco/voucher/ledger/application/LedgerServiceTest.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/ledger/domain/LedgerEntryTest.kt`
 
-- [ ] **Step 1: Write LedgerEntry immutability test**
+- [x] **Step 1: Write LedgerEntry immutability test**
 
 ```kotlin
 class LedgerEntryTest : DescribeSpec({
@@ -1290,9 +1290,9 @@ class LedgerEntryTest : DescribeSpec({
 })
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
-- [ ] **Step 3: Implement AccountCode, LedgerEntryType, LedgerEntry (2-row model)**
+- [x] **Step 3: Implement AccountCode, LedgerEntryType, LedgerEntry (2-row model)**
 
 > **Design note:** 스펙에 따라 하나의 Transaction에 2개의 LedgerEntry(차변 1행 + 대변 1행)를 쌍으로 생성합니다. 각 행은 하나의 계정에 대한 단일 방향(DEBIT 또는 CREDIT) 기록입니다.
 
@@ -1340,9 +1340,9 @@ class LedgerEntry(
 
 > **원화(KRW) 참고:** 모든 금액은 정수 원 단위입니다. BigDecimal을 사용하지만 소수점 이하 값은 발생하지 않습니다. Redis 카운터에서 `toLong()` 변환 시 정밀도 손실이 없습니다.
 
-- [ ] **Step 4: Run immutability test — expect PASS**
+- [x] **Step 4: Run immutability test — expect PASS**
 
-- [ ] **Step 5: Implement Transaction entity**
+- [x] **Step 5: Implement Transaction entity**
 
 ```kotlin
 enum class TransactionType {
@@ -1382,7 +1382,7 @@ class Transaction(
 }
 ```
 
-- [ ] **Step 6: Write LedgerService test — debit/credit pair must balance**
+- [x] **Step 6: Write LedgerService test — debit/credit pair must balance**
 
 ```kotlin
 class LedgerServiceTest : IntegrationTestSupport() {
@@ -1408,9 +1408,9 @@ class LedgerServiceTest : IntegrationTestSupport() {
 }
 ```
 
-- [ ] **Step 7: Run test — expect FAIL**
+- [x] **Step 7: Run test — expect FAIL**
 
-- [ ] **Step 8: Implement LedgerService**
+- [x] **Step 8: Implement LedgerService**
 
 ```kotlin
 @Service
@@ -1457,9 +1457,9 @@ class LedgerService(
 }
 ```
 
-- [ ] **Step 9: Run test — expect PASS**
+- [x] **Step 9: Run test — expect PASS**
 
-- [ ] **Step 10: Commit**
+- [x] **Step 10: Commit**
 
 ```bash
 git add -A
@@ -1478,7 +1478,7 @@ git commit -m "feat: add Ledger and Transaction modules with immutable double-en
 - Create: `src/main/kotlin/com/komsco/voucher/common/idempotency/IdempotencyRedisRepository.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/common/idempotency/IdempotencyInterceptorTest.kt`
 
-- [ ] **Step 1: Write idempotency test — duplicate request returns same response**
+- [x] **Step 1: Write idempotency test — duplicate request returns same response**
 
 ```kotlin
 class IdempotencyInterceptorTest : IntegrationTestSupport() {
@@ -1506,9 +1506,9 @@ class IdempotencyInterceptorTest : IntegrationTestSupport() {
 }
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
-- [ ] **Step 3: Implement `@Idempotent` annotation, IdempotencyKey entity, Redis + DB dual storage, AOP interceptor**
+- [x] **Step 3: Implement `@Idempotent` annotation, IdempotencyKey entity, Redis + DB dual storage, AOP interceptor**
 
 The `@Idempotent` annotation marks controller methods. The AOP interceptor:
 1. Extracts `Idempotency-Key` header
@@ -1524,9 +1524,9 @@ annotation class Idempotent
 
 IdempotencyKey entity stores: key (unique), responseBody (TEXT), responseStatus (INT), createdAt.
 
-- [ ] **Step 4: Run test — expect PASS**
+- [x] **Step 4: Run test — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -1551,7 +1551,7 @@ git commit -m "feat: add idempotency module with Redis+DB dual storage and AOP i
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/domain/VoucherCodeGeneratorTest.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/application/VoucherIssueServiceTest.kt`
 
-- [ ] **Step 1: Write VoucherCodeGenerator test**
+- [x] **Step 1: Write VoucherCodeGenerator test**
 
 ```kotlin
 class VoucherCodeGeneratorTest : DescribeSpec({
@@ -1577,9 +1577,9 @@ class VoucherCodeGeneratorTest : DescribeSpec({
 })
 ```
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
-- [ ] **Step 3: Implement VoucherCodeGenerator**
+- [x] **Step 3: Implement VoucherCodeGenerator**
 
 ```kotlin
 @Component
@@ -1616,13 +1616,13 @@ class VoucherCodeGenerator {
 }
 ```
 
-- [ ] **Step 4: Run code generator test — expect PASS**
+- [x] **Step 4: Run code generator test — expect PASS**
 
-- [ ] **Step 5: Write Voucher domain tests (state transitions)**
+- [x] **Step 5: Write Voucher domain tests (state transitions)**
 
 Test: ACTIVE→PARTIALLY_USED, ACTIVE→EXHAUSTED, ACTIVE→EXPIRED, invalid transitions.
 
-- [ ] **Step 6: Implement Voucher entity**
+- [x] **Step 6: Implement Voucher entity**
 
 ```kotlin
 @Entity
@@ -1657,9 +1657,9 @@ class Voucher(
 }
 ```
 
-- [ ] **Step 7: Run domain tests — expect PASS**
+- [x] **Step 7: Run domain tests — expect PASS**
 
-- [ ] **Step 8: Implement VoucherLockManager (Redisson wrapper)**
+- [x] **Step 8: Implement VoucherLockManager (Redisson wrapper)**
 
 ```kotlin
 @Component
@@ -1679,7 +1679,7 @@ class VoucherLockManager(private val redissonClient: RedissonClient) {
 }
 ```
 
-- [ ] **Step 9: Implement RedisConfig for Redisson + Region monthly counter**
+- [x] **Step 9: Implement RedisConfig for Redisson + Region monthly counter**
 
 ```kotlin
 @Configuration
@@ -1693,7 +1693,7 @@ class RedisConfig {
 }
 ```
 
-- [ ] **Step 10: Implement VoucherIssueService**
+- [x] **Step 10: Implement VoucherIssueService**
 
 ```kotlin
 @Service
@@ -1746,13 +1746,13 @@ class VoucherIssueService(
 }
 ```
 
-- [ ] **Step 11: Write VoucherIssueService integration test**
+- [x] **Step 11: Write VoucherIssueService integration test**
 
 Test: successful issuance, member limit exceeded, region monthly limit exceeded.
 
-- [ ] **Step 12: Run all tests — expect PASS**
+- [x] **Step 12: Run all tests — expect PASS**
 
-- [ ] **Step 13: Commit**
+- [x] **Step 13: Commit**
 
 ```bash
 git add -A
@@ -1769,7 +1769,7 @@ git commit -m "feat: add Voucher issuance with distributed lock, atomic region c
 - Modify: `src/main/kotlin/com/komsco/voucher/voucher/interfaces/VoucherController.kt` (add redeem endpoint)
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/application/VoucherRedemptionServiceTest.kt`
 
-- [ ] **Step 1: Write redemption test — happy path**
+- [x] **Step 1: Write redemption test — happy path**
 
 ```kotlin
 @Test
@@ -1786,7 +1786,7 @@ fun `should redeem voucher and record ledger entry`() {
 }
 ```
 
-- [ ] **Step 2: Write redemption test — insufficient balance**
+- [x] **Step 2: Write redemption test — insufficient balance**
 
 ```kotlin
 @Test
@@ -1798,7 +1798,7 @@ fun `should reject redemption when balance is insufficient`() {
 }
 ```
 
-- [ ] **Step 3: Write redemption test — expired voucher**
+- [x] **Step 3: Write redemption test — expired voucher**
 
 ```kotlin
 @Test
@@ -1810,9 +1810,9 @@ fun `should reject redemption for expired voucher`() {
 }
 ```
 
-- [ ] **Step 4: Run tests — expect FAIL**
+- [x] **Step 4: Run tests — expect FAIL**
 
-- [ ] **Step 5: Implement VoucherRedemptionService**
+- [x] **Step 5: Implement VoucherRedemptionService**
 
 This is the most critical service. The flow:
 1. Acquire Redisson distributed lock on `voucher:{id}`
@@ -1898,9 +1898,9 @@ VoucherJpaRepository needs:
 fun findByIdForUpdate(@Param("id") id: Long): Voucher?
 ```
 
-- [ ] **Step 6: Run tests — expect PASS**
+- [x] **Step 6: Run tests — expect PASS**
 
-- [ ] **Step 7: Add redeem endpoint to VoucherController**
+- [x] **Step 7: Add redeem endpoint to VoucherController**
 
 ```kotlin
 @PostMapping("/{id}/redeem")
@@ -1912,7 +1912,7 @@ fun redeem(
 ): RedemptionResult = redemptionService.redeem(id, request.merchantId, request.amount, idempotencyKey)
 ```
 
-- [ ] **Step 8: Commit**
+- [x] **Step 8: Commit**
 
 ```bash
 git add -A
@@ -1928,19 +1928,19 @@ git commit -m "feat: add voucher redemption with distributed lock + pessimistic 
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/domain/event/VoucherRefundedEvent.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/application/VoucherRefundServiceTest.kt`
 
-- [ ] **Step 1: Write refund tests**
+- [x] **Step 1: Write refund tests**
 
 Test: successful refund (60%+ used), rejection (less than 60% used), refund restores balance to 0.
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
-- [ ] **Step 3: Implement VoucherRefundService**
+- [x] **Step 3: Implement VoucherRefundService**
 
 Flow: distributed lock → validate PARTIALLY_USED + usageRatio ≥ 0.6 → create compensating transaction → ledger entry (debit REFUND_PAYABLE, credit VOUCHER_BALANCE) → set balance to 0 → REFUNDED status.
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -1956,19 +1956,19 @@ git commit -m "feat: add balance refund with 60% usage threshold and compensatin
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/domain/event/VoucherWithdrawnEvent.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/application/VoucherWithdrawalServiceTest.kt`
 
-- [ ] **Step 1: Write withdrawal tests**
+- [x] **Step 1: Write withdrawal tests**
 
 Test: successful withdrawal (ACTIVE + within 7 days), rejection (after 7 days), rejection (PARTIALLY_USED).
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
-- [ ] **Step 3: Implement VoucherWithdrawalService**
+- [x] **Step 3: Implement VoucherWithdrawalService**
 
 Flow: distributed lock → validate ACTIVE + purchasedAt + 7 days >= now → WITHDRAWAL_REQUESTED → full refund amount = faceValue → compensating transaction → ledger entry (debit REFUND_PAYABLE, credit VOUCHER_BALANCE) → WITHDRAWN.
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -1984,13 +1984,13 @@ git commit -m "feat: add 7-day withdrawal (청약철회) with full refund"
 - Create: `src/main/kotlin/com/komsco/voucher/transaction/domain/event/TransactionCancelledEvent.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/transaction/application/TransactionCancelServiceTest.kt`
 
-- [ ] **Step 1: Write cancellation tests**
+- [x] **Step 1: Write cancellation tests**
 
 Test: cancel a COMPLETED redemption → balance restored, compensating transaction created with `original_transaction_id`, original transaction status becomes CANCELLED, new reverse ledger entries exist.
 
-- [ ] **Step 2: Run tests — expect FAIL**
+- [x] **Step 2: Run tests — expect FAIL**
 
-- [ ] **Step 3: Implement TransactionCancelService**
+- [x] **Step 3: Implement TransactionCancelService**
 
 Flow:
 1. Get original transaction, validate COMPLETED
@@ -2001,9 +2001,9 @@ Flow:
 6. Mark original transaction as CANCELLED
 7. Publish TransactionCancelledEvent
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -2019,13 +2019,13 @@ git commit -m "feat: add transaction cancellation with compensating transactions
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/domain/event/VoucherExpiredEvent.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/voucher/application/VoucherExpirySchedulerTest.kt`
 
-- [ ] **Step 1: Write expiry test**
+- [x] **Step 1: Write expiry test**
 
 Test: expired voucher gets status changed and remaining balance moved to EXPIRED account in ledger.
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
-- [ ] **Step 3: Implement VoucherExpiryScheduler**
+- [x] **Step 3: Implement VoucherExpiryScheduler**
 
 ```kotlin
 @Component
@@ -2087,9 +2087,9 @@ VoucherJpaRepository needs:
 fun findExpiredVouchers(statuses: List<VoucherStatus>, now: LocalDateTime, limit: Pageable): List<Voucher>
 ```
 
-- [ ] **Step 4: Run test — expect PASS**
+- [x] **Step 4: Run test — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -2108,13 +2108,13 @@ git commit -m "feat: add voucher expiry scheduler with chunk processing and ledg
 - Create: `src/main/kotlin/com/komsco/voucher/merchant/infrastructure/SettlementJpaRepository.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/merchant/application/SettlementServiceTest.kt`
 
-- [ ] **Step 1: Write settlement calculation test**
+- [x] **Step 1: Write settlement calculation test**
 
 Test: sum redemptions minus cancellations for a merchant in a period.
 
-- [ ] **Step 2: Run test — expect FAIL**
+- [x] **Step 2: Run test — expect FAIL**
 
-- [ ] **Step 3: Implement Settlement entity and service**
+- [x] **Step 3: Implement Settlement entity and service**
 
 Settlement entity: merchantId, periodStart, periodEnd, totalAmount, status (PENDING→CONFIRMED→PAID→DISPUTED), unique constraint on (merchantId, periodStart, periodEnd).
 
@@ -2163,9 +2163,9 @@ SettlementController (`src/main/kotlin/com/komsco/voucher/merchant/interfaces/Se
 - `POST /api/v1/settlements/{id}/dispute` — 이의 제기 (reason 필수)
 - `GET /api/v1/settlements?merchantId=&period=` — 정산 내역 조회
 
-- [ ] **Step 4: Run test — expect PASS**
+- [x] **Step 4: Run test — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -2180,7 +2180,7 @@ git commit -m "feat: add Settlement module with period-based calculation and ded
 - Create: `src/main/kotlin/com/komsco/voucher/ledger/application/LedgerVerificationService.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/ledger/application/LedgerVerificationServiceTest.kt`
 
-- [ ] **Step 1: Write verification test — balanced ledger passes**
+- [x] **Step 1: Write verification test — balanced ledger passes**
 
 ```kotlin
 @Test
@@ -2192,7 +2192,7 @@ fun `should pass verification when ledger is balanced`() {
 }
 ```
 
-- [ ] **Step 2: Write verification test — detect imbalance**
+- [x] **Step 2: Write verification test — detect imbalance**
 
 ```kotlin
 @Test
@@ -2204,9 +2204,9 @@ fun `should detect imbalance between voucher balance and ledger sum`() {
 }
 ```
 
-- [ ] **Step 3: Run tests — expect FAIL**
+- [x] **Step 3: Run tests — expect FAIL**
 
-- [ ] **Step 4: Implement LedgerVerificationService**
+- [x] **Step 4: Implement LedgerVerificationService**
 
 ```kotlin
 @Service
@@ -2262,9 +2262,9 @@ data class ImbalancedVoucher(
 )
 ```
 
-- [ ] **Step 5: Run tests — expect PASS**
+- [x] **Step 5: Run tests — expect PASS**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -2279,7 +2279,7 @@ git commit -m "feat: add ledger verification batch with global + per-voucher bal
 - Create: `src/test/kotlin/com/komsco/voucher/integration/ConcurrencyTest.kt`
 - Create: `src/test/kotlin/com/komsco/voucher/integration/E2EFlowTest.kt`
 
-- [ ] **Step 1: Write concurrent redemption test**
+- [x] **Step 1: Write concurrent redemption test**
 
 ```kotlin
 @Test
@@ -2310,7 +2310,7 @@ fun `10 concurrent redemptions on same voucher should not over-deduct`() {
 }
 ```
 
-- [ ] **Step 2: Write idempotency test**
+- [x] **Step 2: Write idempotency test**
 
 ```kotlin
 @Test
@@ -2324,12 +2324,12 @@ fun `duplicate redemption with same idempotency key should not double-deduct`() 
 }
 ```
 
-- [ ] **Step 3: Write E2E flow test**
+- [x] **Step 3: Write E2E flow test**
 
 Test the full lifecycle: issue → partial redeem → partial redeem → refund request → refund completed.
 Verify ledger entries trace the full lifecycle. Verify audit logs for each step.
 
-- [ ] **Step 4: Write expiry-during-redemption race test**
+- [x] **Step 4: Write expiry-during-redemption race test**
 
 ```kotlin
 @Test
@@ -2340,12 +2340,12 @@ fun `expiry scheduler and redemption should not conflict`() {
 }
 ```
 
-- [ ] **Step 5: Run all integration tests**
+- [x] **Step 5: Run all integration tests**
 
 Run: `./gradlew test --tests "com.komsco.voucher.integration.*"`
 Expected: ALL PASS
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A
@@ -2361,14 +2361,14 @@ git commit -m "test: add concurrency, idempotency, and E2E integration tests"
 - Create: `src/main/kotlin/com/komsco/voucher/config/SwaggerConfig.kt`
 - Create: `README.md`
 
-- [ ] **Step 1: Add Swagger/OpenAPI dependency**
+- [x] **Step 1: Add Swagger/OpenAPI dependency**
 
 Add to `build.gradle.kts`:
 ```kotlin
 implementation("org.springdoc:springdoc-openapi-starter-webmvc-ui:2.4.0")
 ```
 
-- [ ] **Step 2: Create SwaggerConfig**
+- [x] **Step 2: Create SwaggerConfig**
 
 ```kotlin
 @Configuration
@@ -2382,17 +2382,17 @@ class SwaggerConfig {
 }
 ```
 
-- [ ] **Step 3: Write README.md**
+- [x] **Step 3: Write README.md**
 
 Follow the structure from `docs/03-implementation-roadmap.md` README section.
 Include: architecture diagram (text), technical decisions with justifications, concurrency control table, event design, execution instructions, test results.
 
-- [ ] **Step 4: Verify Swagger UI loads**
+- [x] **Step 4: Verify Swagger UI loads**
 
 Run: `./gradlew bootRun`
 Expected: Swagger UI available at `http://localhost:8080/swagger-ui.html`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add -A
@@ -2446,7 +2446,7 @@ class FailedEventRetryScheduler(
 - Create: `src/main/kotlin/com/komsco/voucher/ledger/application/LedgerAdjustmentService.kt`
 - Test: `src/test/kotlin/com/komsco/voucher/ledger/application/LedgerAdjustmentServiceTest.kt`
 
-- [ ] **Step 1: Write test — admin can create manual adjustment with reason**
+- [x] **Step 1: Write test — admin can create manual adjustment with reason**
 
 ```kotlin
 @Test
@@ -2464,7 +2464,7 @@ fun `admin should be able to create manual adjustment with reason`() {
 }
 ```
 
-- [ ] **Step 2: Write test — non-admin is rejected**
+- [x] **Step 2: Write test — non-admin is rejected**
 
 ```kotlin
 @Test
@@ -2475,15 +2475,15 @@ fun `non-admin should be rejected for manual adjustment`() {
 }
 ```
 
-- [ ] **Step 3: Write test — reason is required**
+- [x] **Step 3: Write test — reason is required**
 
-- [ ] **Step 4: Implement LedgerAdjustmentService**
+- [x] **Step 4: Implement LedgerAdjustmentService**
 
 Validates admin role, requires non-empty reason, creates Transaction + LedgerEntry pair (MANUAL_ADJUSTMENT), publishes MANUAL_ADJUSTMENT event for CRITICAL audit.
 
-- [ ] **Step 5: Run tests — expect PASS**
+- [x] **Step 5: Run tests — expect PASS**
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add -A

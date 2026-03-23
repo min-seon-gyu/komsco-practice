@@ -27,7 +27,8 @@ SUSPENDED ───→ DEACTIVATED (완전 종료)
 ```
 
 - 소유 정보: 지자체명, 할인율, 1인 구매한도, 월 발행한도, 잔액환불 기준비율(기본 60%), 사용제한 업종 목록
-- 정산 주기: Region 단위로 설정 (일/주/월, 역월 기준, KST 타임존)
+- 정산 주기: Region 단위로 설정 (SettlementPeriod: DAILY/WEEKLY/MONTHLY, 역월 기준, KST 타임존)
+- RegionStatus와 SettlementPeriod는 `RegionStatus.kt` 파일에 함께 정의
 
 ### 1.2 Member (시민 회원)
 
@@ -105,8 +106,9 @@ WITHDRAWAL_REQUESTED → ACTIVE (청약철회 거절, 원상복귀)
 ```
 
 - 한 번 기록되면 수정/삭제 불가 (Immutable)
-- 필드: `account`, `side`(DEBIT/CREDIT), `amount`, `transactionId`, `entryType`, `createdAt`
+- 필드: `accountCode`(AccountCode), `side`(LedgerEntrySide: DEBIT/CREDIT), `amount`, `transactionId`, `entryType`(LedgerEntryType), `createdAt`
 - entryType: `PURCHASE`, `REDEMPTION`, `REFUND`, `WITHDRAWAL`, `EXPIRY`, `SETTLEMENT`, `CANCELLATION`, `MANUAL_ADJUSTMENT`
+- accountCode: `MEMBER_CASH`(회원 현금), `VOUCHER_BALANCE`(상품권 잔액), `MERCHANT_RECEIVABLE`(가맹점 미수금), `REVENUE_DISCOUNT`(할인 수익), `EXPIRED_VOUCHER`(만료 상품권), `REFUND_PAYABLE`(환불 미지급금), `SETTLEMENT_PAYABLE`(정산 미지급금)
 - `MANUAL_ADJUSTMENT`: 관리자 승인 필수, 사유 필드(reason) 필수 입력, 생성 시 반드시 CRITICAL 감사 로그 동반
 
 ### 1.7 Transaction (거래)
@@ -125,6 +127,8 @@ CANCEL_REQUESTED → CANCELLED (취소 완료)
 - 모든 금전 변동의 단위. 상품권 사용, 환불, 정산 등 각각이 하나의 Transaction
 - 하나의 Transaction에 2개의 LedgerEntry(차변/대변)가 반드시 쌍으로 생성
 - 원장 기록은 이벤트 리스너가 아닌 **서비스 내 동기 호출**로 동일 DB 트랜잭션에서 처리 (I2, I3 보장)
+- TransactionType: `PURCHASE`, `REDEMPTION`, `REFUND`, `WITHDRAWAL`, `EXPIRY`, `CANCELLATION`
+- TransactionStatus와 TransactionType은 `TransactionStatus.kt` 파일에 함께 정의
 
 ### 1.8 Settlement (정산)
 
