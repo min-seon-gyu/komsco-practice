@@ -6,6 +6,7 @@ import com.komsco.voucher.voucher.application.VoucherRedemptionService
 import com.komsco.voucher.voucher.application.VoucherRefundService
 import com.komsco.voucher.voucher.application.VoucherWithdrawalService
 import com.komsco.voucher.voucher.interfaces.dto.*
+import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
@@ -21,12 +22,12 @@ class VoucherController(
     @PostMapping("/purchase")
     @ResponseStatus(HttpStatus.CREATED)
     @Idempotent
-    fun purchase(@RequestBody request: PurchaseVoucherRequest): VoucherResponse =
+    fun purchase(@Valid @RequestBody request: PurchaseVoucherRequest): VoucherResponse =
         VoucherResponse.from(issueService.issue(request.memberId, request.regionId, request.faceValue))
 
     @PostMapping("/{id}/redeem")
     @Idempotent
-    fun redeem(@PathVariable id: Long, @RequestBody request: RedeemRequest): RedemptionResult =
+    fun redeem(@PathVariable id: Long, @Valid @RequestBody request: RedeemRequest): RedemptionResult =
         redemptionService.redeem(id, request.merchantId, request.amount)
 
     @PostMapping("/{id}/refund")
