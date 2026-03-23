@@ -48,7 +48,7 @@ class TransactionCancelService(
                 creditAccount = AccountCode.MERCHANT_RECEIVABLE,
                 amount = original.amount,
                 transactionId = compensating.id,
-                entryType = LedgerEntryType.REDEMPTION,
+                entryType = LedgerEntryType.CANCELLATION,
             )
             compensating.complete()
             original.cancel()
