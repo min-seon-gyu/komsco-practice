@@ -22,7 +22,7 @@ abstract class IntegrationTestSupport {
             start()
         }
 
-        val redis = GenericContainer("redis:7-alpine").apply {
+        val redis = GenericContainer<Nothing>("redis:7-alpine").apply {
             withExposedPorts(6379)
             start()
         }
