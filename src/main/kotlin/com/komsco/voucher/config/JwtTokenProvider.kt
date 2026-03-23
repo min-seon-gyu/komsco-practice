@@ -9,10 +9,16 @@ import javax.crypto.SecretKey
 
 @Component
 class JwtTokenProvider(
-    @Value("\${jwt.secret:default-secret-key-for-voucher-system-minimum-256-bits-long!!}") private val secret: String,
+    @Value("\${jwt.secret:#{null}}") secret: String?,
     @Value("\${jwt.expiration:86400000}") private val expirationMs: Long,
 ) {
-    private val key: SecretKey = Keys.hmacShaKeyFor(secret.toByteArray())
+    private val key: SecretKey
+
+    init {
+        val resolvedSecret = secret
+            ?: "local-dev-only-secret-key-minimum-256-bits-long-do-not-use-in-production!!"
+        key = Keys.hmacShaKeyFor(resolvedSecret.toByteArray())
+    }
 
     fun generateToken(memberId: Long, role: String): String {
         val now = Date()
@@ -32,7 +38,7 @@ class JwtTokenProvider(
 
     fun getRoleFromToken(token: String): String {
         val claims = Jwts.parser().verifyWith(key).build().parseSignedClaims(token).payload
-        return claims["role"] as String
+        return claims.get("role", String::class.java) ?: "USER"
     }
 
     fun validateToken(token: String): Boolean {

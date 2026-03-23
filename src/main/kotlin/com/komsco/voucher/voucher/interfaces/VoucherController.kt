@@ -1,5 +1,7 @@
 package com.komsco.voucher.voucher.interfaces
 
+import com.komsco.voucher.common.exception.BusinessException
+import com.komsco.voucher.common.exception.ErrorCode
 import com.komsco.voucher.common.idempotency.Idempotent
 import com.komsco.voucher.voucher.application.VoucherIssueService
 import com.komsco.voucher.voucher.application.VoucherRedemptionService
@@ -41,7 +43,7 @@ class VoucherController(
     fun getById(@PathVariable id: Long): VoucherResponse =
         VoucherResponse.from(
             voucherJpaRepository.findById(id)
-                .orElseThrow { com.komsco.voucher.common.exception.BusinessException(com.komsco.voucher.common.exception.ErrorCode.ENTITY_NOT_FOUND) }
+                .orElseThrow { BusinessException(ErrorCode.ENTITY_NOT_FOUND) }
         )
 
     @PostMapping("/purchase")

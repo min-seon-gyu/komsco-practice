@@ -44,10 +44,13 @@ class Voucher(
     var status: VoucherStatus = VoucherStatus.ACTIVE,
 ) : BaseEntity() {
 
+    init {
+        require(faceValue > BigDecimal.ZERO) { "액면가는 0보다 커야 합니다" }
+        require(balance >= BigDecimal.ZERO) { "잔액은 0 이상이어야 합니다" }
+    }
+
     val usageRatio: BigDecimal
-        get() = if (faceValue > BigDecimal.ZERO)
-            (faceValue - balance).divide(faceValue, 4, RoundingMode.HALF_UP)
-        else BigDecimal.ZERO
+        get() = (faceValue - balance).divide(faceValue, 4, RoundingMode.HALF_UP)
 
     fun redeem(amount: BigDecimal) {
         if (!isUsable()) throw BusinessException(ErrorCode.VOUCHER_NOT_USABLE)
