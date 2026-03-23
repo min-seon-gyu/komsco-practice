@@ -2,6 +2,7 @@ package com.komsco.voucher.merchant.interfaces
 
 import com.komsco.voucher.merchant.application.MerchantService
 import com.komsco.voucher.merchant.application.RegisterMerchantRequest
+import com.komsco.voucher.merchant.domain.Merchant
 import org.springframework.http.HttpStatus
 import org.springframework.web.bind.annotation.*
 
@@ -12,7 +13,18 @@ data class MerchantResponse(
     val category: String,
     val regionId: Long,
     val status: String,
-)
+) {
+    companion object {
+        fun from(m: Merchant) = MerchantResponse(
+            id = m.id,
+            name = m.name,
+            businessNumber = m.businessNumber,
+            category = m.category.name,
+            regionId = m.region.id,
+            status = m.status.name,
+        )
+    }
+}
 
 @RestController
 @RequestMapping("/api/v1/merchants")
@@ -22,44 +34,24 @@ class MerchantController(
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    fun register(@RequestBody request: RegisterMerchantRequest): MerchantResponse {
-        val merchant = merchantService.register(request)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun register(@RequestBody request: RegisterMerchantRequest) =
+        MerchantResponse.from(merchantService.register(request))
 
     @PostMapping("/{id}/approve")
-    fun approve(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.approve(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun approve(@PathVariable id: Long) = MerchantResponse.from(merchantService.approve(id))
 
     @PostMapping("/{id}/reject")
-    fun reject(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.reject(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun reject(@PathVariable id: Long) = MerchantResponse.from(merchantService.reject(id))
 
     @PostMapping("/{id}/suspend")
-    fun suspend(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.suspend(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun suspend(@PathVariable id: Long) = MerchantResponse.from(merchantService.suspend(id))
 
     @PostMapping("/{id}/unsuspend")
-    fun unsuspend(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.unsuspend(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun unsuspend(@PathVariable id: Long) = MerchantResponse.from(merchantService.unsuspend(id))
 
     @PostMapping("/{id}/terminate")
-    fun terminate(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.terminate(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun terminate(@PathVariable id: Long) = MerchantResponse.from(merchantService.terminate(id))
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): MerchantResponse {
-        val merchant = merchantService.getById(id)
-        return MerchantResponse(merchant.id, merchant.name, merchant.businessNumber, merchant.category.name, merchant.region.id, merchant.status.name)
-    }
+    fun getById(@PathVariable id: Long) = MerchantResponse.from(merchantService.getById(id))
 }

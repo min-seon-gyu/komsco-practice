@@ -58,6 +58,7 @@ class VoucherExpiryProcessor(
 
         val remainingBalance = locked.balance
         locked.expire()
+        locked.balance = BigDecimal.ZERO
 
         if (remainingBalance > BigDecimal.ZERO) {
             val tx = transactionService.create(

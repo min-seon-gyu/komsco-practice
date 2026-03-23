@@ -2,12 +2,17 @@ package com.komsco.voucher.voucher.infrastructure
 
 import com.komsco.voucher.common.exception.BusinessException
 import com.komsco.voucher.common.exception.ErrorCode
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
 import org.redisson.api.RedissonClient
 import org.springframework.stereotype.Component
 import java.util.concurrent.TimeUnit
 
 @Component
-class VoucherLockManager(private val redissonClient: RedissonClient) {
+class VoucherLockManager(
+    private val redissonClient: RedissonClient,
+    private val meterRegistry: MeterRegistry,
+) {
 
     fun <T> withVoucherLock(voucherId: Long, action: () -> T): T =
         withLock("voucher:$voucherId", action)
@@ -17,8 +22,14 @@ class VoucherLockManager(private val redissonClient: RedissonClient) {
 
     private fun <T> withLock(key: String, action: () -> T): T {
         val lock = redissonClient.getLock(key)
+        val timer = Timer.start(meterRegistry)
         val acquired = lock.tryLock(5, 10, TimeUnit.SECONDS)
-        if (!acquired) throw BusinessException(ErrorCode.LOCK_ACQUISITION_FAILED)
+        timer.stop(meterRegistry.timer("lock.acquisition.duration", "key", key.substringBefore(':')))
+
+        if (!acquired) {
+            meterRegistry.counter("lock.acquisition.timeout", "key", key.substringBefore(':')).increment()
+            throw BusinessException(ErrorCode.LOCK_ACQUISITION_FAILED)
+        }
         try {
             return action()
         } finally {

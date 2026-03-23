@@ -104,5 +104,5 @@ class Voucher(
 
     fun isUsable(): Boolean = status in setOf(VoucherStatus.ACTIVE, VoucherStatus.PARTIALLY_USED)
 
-    fun isExpired(): Boolean = expiresAt.isBefore(LocalDateTime.now())
+    fun isExpired(now: LocalDateTime = LocalDateTime.now()): Boolean = expiresAt.isBefore(now)
 }

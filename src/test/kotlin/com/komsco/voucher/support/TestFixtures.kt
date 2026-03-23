@@ -11,8 +11,11 @@ import com.komsco.voucher.region.domain.Region
 import com.komsco.voucher.region.interfaces.dto.CreateRegionRequest
 import com.komsco.voucher.voucher.application.VoucherIssueService
 import com.komsco.voucher.voucher.domain.Voucher
+import com.komsco.voucher.voucher.infrastructure.VoucherJpaRepository
 import org.springframework.stereotype.Component
+import org.springframework.transaction.annotation.Transactional
 import java.math.BigDecimal
+import java.time.LocalDateTime
 
 @Component
 class TestFixtures(
@@ -20,6 +23,7 @@ class TestFixtures(
     private val memberService: MemberService,
     private val merchantService: MerchantService,
     private val voucherIssueService: VoucherIssueService,
+    private val voucherJpaRepository: VoucherJpaRepository,
 ) {
     private var counter = 0
 
@@ -70,5 +74,15 @@ class TestFixtures(
         faceValue: BigDecimal = BigDecimal("50000"),
     ): Voucher {
         return voucherIssueService.issue(memberId, regionId, faceValue)
+    }
+
+    @Transactional
+    fun forceExpireVoucher(voucherId: Long) {
+        voucherJpaRepository.updateExpiresAt(voucherId, LocalDateTime.now().minusDays(1))
+    }
+
+    @Transactional
+    fun forcePurchasedAt(voucherId: Long, purchasedAt: LocalDateTime) {
+        voucherJpaRepository.updatePurchasedAt(voucherId, purchasedAt)
     }
 }

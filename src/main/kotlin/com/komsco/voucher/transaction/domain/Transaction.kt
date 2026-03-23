@@ -32,6 +32,10 @@ class Transaction(
     var status: TransactionStatus = TransactionStatus.PENDING,
 ) : BaseEntity() {
 
+    init {
+        require(amount > BigDecimal.ZERO) { "거래 금액은 0보다 커야 합니다" }
+    }
+
     fun complete() {
         if (status != TransactionStatus.PENDING)
             throw BusinessException(ErrorCode.INVALID_STATE_TRANSITION)

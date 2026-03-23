@@ -51,6 +51,7 @@ class ConcurrencyTest : IntegrationTestSupport() {
         val executor = Executors.newFixedThreadPool(threadCount)
         val successCount = AtomicInteger(0)
         val failCount = AtomicInteger(0)
+        val failReasons = java.util.concurrent.ConcurrentHashMap<String, AtomicInteger>()
 
         // when: 10개 스레드가 동시에 10,000원씩 결제 시도
         val futures = (1..threadCount).map {
@@ -63,6 +64,7 @@ class ConcurrencyTest : IntegrationTestSupport() {
                     successCount.incrementAndGet()
                 } catch (e: BusinessException) {
                     failCount.incrementAndGet()
+                    failReasons.computeIfAbsent(e.errorCode.name) { AtomicInteger(0) }.incrementAndGet()
                 }
             }
         }
@@ -78,6 +80,9 @@ class ConcurrencyTest : IntegrationTestSupport() {
         successCount.get() shouldBe 5
         failCount.get() shouldBe 5
         updated.balance.compareTo(BigDecimal.ZERO) shouldBe 0
+
+        // 실패 원인이 INSUFFICIENT_BALANCE인지 확인 (LOCK_TIMEOUT이 아님)
+        failReasons.keys shouldBe setOf("INSUFFICIENT_BALANCE")
 
         // 완료된 트랜잭션 수 검증
         val completedTxCount = transactionRepository.countByVoucherIdAndStatus(
