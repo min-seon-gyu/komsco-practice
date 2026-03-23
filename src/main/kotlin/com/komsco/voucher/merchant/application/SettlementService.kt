@@ -3,10 +3,12 @@ package com.komsco.voucher.merchant.application
 import com.komsco.voucher.common.exception.BusinessException
 import com.komsco.voucher.common.exception.ErrorCode
 import com.komsco.voucher.merchant.domain.Settlement
+import com.komsco.voucher.merchant.domain.event.SettlementConfirmedEvent
 import com.komsco.voucher.merchant.infrastructure.SettlementJpaRepository
 import com.komsco.voucher.transaction.domain.TransactionStatus
 import com.komsco.voucher.transaction.domain.TransactionType
 import com.komsco.voucher.transaction.infrastructure.TransactionJpaRepository
+import org.springframework.context.ApplicationEventPublisher
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDate
@@ -17,6 +19,7 @@ import java.time.LocalTime
 class SettlementService(
     private val settlementRepository: SettlementJpaRepository,
     private val transactionRepository: TransactionJpaRepository,
+    private val eventPublisher: ApplicationEventPublisher,
 ) {
 
     @Transactional
@@ -47,6 +50,15 @@ class SettlementService(
     fun confirm(settlementId: Long): Settlement {
         val settlement = getById(settlementId)
         settlement.confirm()
+        eventPublisher.publishEvent(
+            SettlementConfirmedEvent(
+                aggregateId = settlement.id,
+                merchantId = settlement.merchantId,
+                totalAmount = settlement.totalAmount,
+                periodStart = settlement.periodStart,
+                periodEnd = settlement.periodEnd,
+            )
+        )
         return settlement
     }
 
