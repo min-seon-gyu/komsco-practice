@@ -35,12 +35,13 @@ class IdempotencyInterceptor(
 
         val key = request.getHeader("Idempotency-Key") ?: return true
 
-        // 1. Check Redis first
+        // 1. Check Redis first (format: "status|body")
         val rBucket = redissonClient.getBucket<String>("idempotency:$key")
         val cached = rBucket.get()
         if (cached != null) {
             log.info("Idempotency hit (Redis): {}", key)
-            writeCachedResponse(response, cached)
+            val (status, body) = parseCachedValue(cached)
+            writeCachedResponse(response, body, status)
             return false
         }
 
@@ -48,8 +49,9 @@ class IdempotencyInterceptor(
         val dbRecord = idempotencyRepository.findByIdempotencyKey(key)
         if (dbRecord != null) {
             log.info("Idempotency hit (DB): {}", key)
-            rBucket.set(dbRecord.responseBody, REDIS_TTL)
-            writeCachedResponse(response, dbRecord.responseBody)
+            val cacheValue = "${dbRecord.responseStatus}|${dbRecord.responseBody}"
+            rBucket.set(cacheValue, REDIS_TTL)
+            writeCachedResponse(response, dbRecord.responseBody, dbRecord.responseStatus)
             return false
         }
 
@@ -59,7 +61,7 @@ class IdempotencyInterceptor(
     fun saveResult(key: String, responseBody: String, status: Int) {
         try {
             val rBucket = redissonClient.getBucket<String>("idempotency:$key")
-            rBucket.set(responseBody, REDIS_TTL)
+            rBucket.set("$status|$responseBody", REDIS_TTL)
 
             idempotencyRepository.save(
                 IdempotencyKey(
@@ -73,11 +75,19 @@ class IdempotencyInterceptor(
         }
     }
 
-    private fun writeCachedResponse(response: HttpServletResponse, body: String) {
+    private fun writeCachedResponse(response: HttpServletResponse, body: String, status: Int = 200) {
         response.contentType = "application/json"
         response.characterEncoding = "UTF-8"
-        response.status = 200
+        response.status = status
         response.writer.write(body)
+    }
+
+    private fun parseCachedValue(cached: String): Pair<Int, String> {
+        val separatorIndex = cached.indexOf('|')
+        if (separatorIndex == -1) return Pair(200, cached)
+        val status = cached.substring(0, separatorIndex).toIntOrNull() ?: 200
+        val body = cached.substring(separatorIndex + 1)
+        return Pair(status, body)
     }
 }
 
