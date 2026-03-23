@@ -1,6 +1,6 @@
-# Phase 2 — Architecture & Design Decisions
+# 2단계 — 아키텍처 및 설계 결정
 
-## 1. Package Structure (Modular Monolith)
+## 1. 패키지 구조 (모듈러 모놀리스)
 
 ```
 com.komsco.voucher/
@@ -123,7 +123,7 @@ com.komsco.voucher/
     └── EventConfig.kt
 ```
 
-**모듈 간 핵심 의존 관계:**
+**모듈 간 핵심 의존관계:**
 - `voucher` → `ledger` (동기 호출: 잔액 변경 시 원장 기록)
 - `voucher` → `transaction` (동기 호출: 거래 생성)
 - `merchant` → `transaction` (조회: 정산 대상 거래 조회)
@@ -131,7 +131,7 @@ com.komsco.voucher/
 
 ---
 
-## 2. Concurrency Control Strategy
+## 2. 동시성 제어 전략
 
 | Operation | Strategy | Reason | 방지하는 장애 시나리오 |
 |-----------|----------|--------|----------------------|
@@ -145,6 +145,7 @@ com.komsco.voucher/
 | **회원 정보 수정** | JPA Optimistic Lock (`@Version`) | 충돌 빈도 낮음 | 동시 프로필 수정 |
 
 **Region 월 발행한도 검증 — Redis 원자적 카운터 패턴:**
+
 - 키: `region:monthly:{regionId}:{yyyyMM}` (TTL: 해당 월 말일 + 1일)
 - 발행 시: `INCRBY amount` → 반환값이 한도 초과 시 `DECRBY amount`로 롤백 + 거절
 - 장점: 락 없이 원자적 한도 검증. 분산락 1개(Member)만 사용하므로 데드락 불가
@@ -152,7 +153,7 @@ com.komsco.voucher/
 
 ---
 
-## 3. Idempotency Design
+## 3. 멱등성 설계
 
 ### 멱등키가 필요한 엔드포인트
 
@@ -178,7 +179,7 @@ com.komsco.voucher/
 
 ---
 
-## 4. Domain Event Design
+## 4. 도메인 이벤트 설계
 
 ### 이벤트 목록
 
@@ -197,12 +198,12 @@ com.komsco.voucher/
 - 잔액 변경 + 원장 기록 + Transaction 생성 = 동일 DB 트랜잭션 (I2, I3 보장)
 - 이벤트 리스너 책임: 감사 로그, 알림, 정산 큐 추가 등 비핵심 부수효과
 
-### Listener 실패 처리 전략
+### 리스너 실패 처리 전략
 
 - CRITICAL 감사 로그: `@TransactionalEventListener(phase = BEFORE_COMMIT)` — 동일 트랜잭션. 실패 시 전체 롤백
 - HIGH/MEDIUM 감사 로그, 알림, 정산 큐: `@TransactionalEventListener(phase = AFTER_COMMIT)` — 실패 시 `failed_events` 테이블에 기록 → 스케줄러가 재처리
 
-### Kafka-replaceable 포인트
+### Kafka 전환 가능 포인트
 
 - 모든 이벤트가 `ApplicationEventPublisher.publishEvent()`를 통해 발행
 - 이벤트 클래스는 `domain/event/` 패키지에 순수 데이터 클래스로 정의
@@ -211,7 +212,7 @@ com.komsco.voucher/
 
 ---
 
-## 5. Audit Log Design
+## 5. 감사 로그 설계
 
 ### 감사 대상 작업 (KOMSCO 컴플라이언스 관점)
 
@@ -221,7 +222,7 @@ com.komsco.voucher/
 | **HIGH** | 가맹점 승인/거절/해지, 회원 정지/탈퇴, 지자체 정책 변경 |
 | **MEDIUM** | 가맹점 정보 수정, 관리자 로그인, 상품권 만료 처리 |
 
-### Audit Log 스키마
+### 감사 로그 스키마
 
 ```sql
 CREATE TABLE audit_logs (
@@ -246,7 +247,7 @@ CREATE TABLE audit_logs (
 );
 ```
 
-### 구현 접근: Spring Event Listener (도메인 이벤트 기반)
+### 구현 방식: Spring 이벤트 리스너 (도메인 이벤트 기반)
 
 **선택 이유:**
 - Spring AOP: "어떤 메서드가 호출되었는가"에 의존 → 비즈니스 의미가 약함
@@ -259,7 +260,7 @@ CREATE TABLE audit_logs (
 
 ---
 
-## 6. MySQL-Specific Considerations
+## 6. MySQL 관련 고려사항
 
 ### 인덱스 전략
 
@@ -288,13 +289,14 @@ CREATE TABLE audit_logs (
 
 ### MySQL 8.x 활용 기능
 
+
 - **JSON Column**: `audit_logs.previous_state`, `current_state`, `metadata` — 스키마 유연성. `JSON_EXTRACT`로 조건부 조회 가능
 - **Generated Column**: `voucher_usage_ratio AS ((face_value - balance) / face_value) STORED` — 환불 조건(60%) 검증에 활용. 인덱스 생성 가능
 - **Window Function**: 정산 계산 시 `SUM() OVER (PARTITION BY merchant_id)` 활용
 
 ---
 
-## 7. Senior-Level Design Decision: 보상 트랜잭션 (Compensating Transaction) 체계
+## 7. 시니어 레벨 설계 결정: 보상 트랜잭션 체계
 
 **대부분의 주니어 개발자가 놓치는 것:**
 "취소"를 단순 DELETE나 상태 변경으로 구현하는 것.
@@ -313,8 +315,8 @@ CREATE TABLE audit_logs (
 3. **정산 정합성**: "이 기간 총 사용액 - 이 기간 총 취소액"으로 정확한 정산
 4. **이상 거래 탐지**: 원 거래 대비 취소 비율로 가맹점 환불 사기 탐지
 
-**soft-delete와의 차이:**
-Soft-delete는 "이 레코드는 무효"라고 표시할 뿐, "돈이 어디로 갔는지"를 원장 수준에서 증명하지 못한다.
+**소프트 삭제와의 차이:**
+소프트 삭제는 "이 레코드는 무효"라고 표시할 뿐, "돈이 어디로 갔는지"를 원장 수준에서 증명하지 못한다.
 
 ---
 
@@ -346,4 +348,4 @@ Soft-delete는 "이 레코드는 무효"라고 표시할 뿐, "돈이 어디로 
 
 ---
 
-**Phase 2 핵심 결정:** 6개 도메인 모듈(transaction 추가) + 공통 모듈, 원장은 동기 호출(이벤트 X), 발행 시 Member 락 + Region Redis 카운터(데드락 제거), 이벤트는 감사/알림/정산 큐에만 사용, 운영 메트릭 기반 구축.
+**2단계 핵심 결정:** 6개 도메인 모듈(transaction 추가) + 공통 모듈, 원장은 동기 호출(이벤트 X), 발행 시 Member 락 + Region Redis 카운터(데드락 제거), 이벤트는 감사/알림/정산 큐에만 사용, 운영 메트릭 기반 구축.

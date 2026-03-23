@@ -1,28 +1,28 @@
-# Mobile Voucher System Implementation Plan
+# 모바일 상품권 시스템 구현 계획
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **에이전트 작업자용:** superpowers:subagent-driven-development (권장) 또는 superpowers:executing-plans 스킬을 사용하여 태스크별로 구현합니다. 체크박스(`- [ ]`) 형식으로 진행 상황을 추적합니다.
 
-**Goal:** Build a 지역사랑상품권 lifecycle management backend demonstrating financial integrity, audit compliance, and concurrency safety for KOMSCO portfolio.
+**목표:** 지역사랑상품권의 발행-유통-정산 전 생애주기를 관리하는 백엔드 시스템 구축. 재무 무결성, 감사 추적성, 동시성 안전을 KOMSCO 포트폴리오로 증명.
 
-**Architecture:** Aggregate-based modular monolith with 6 domain modules (region, member, merchant, voucher, transaction, ledger) + common module. Hybrid double-entry bookkeeping with synchronous ledger recording. Domain events via Spring ApplicationEventPublisher for audit/notification side-effects only.
+**아키텍처:** Aggregate 중심 모듈러 모놀리스, 6개 도메인 모듈 (region, member, merchant, voucher, transaction, ledger) + 공통 모듈. 하이브리드 복식부기 + 동기 원장 기록. 도메인 이벤트는 감사/알림 부수효과에만 사용.
 
-**Tech Stack:** Kotlin, Spring Boot 3.x, JPA + QueryDSL, MySQL 8.x, Redis (Redisson), JUnit 5 + Kotest + Testcontainers, Gradle Kotlin DSL, Docker Compose
+**기술 스택:** Kotlin, Spring Boot 3.x, JPA + QueryDSL, MySQL 8.x, Redis (Redisson), JUnit 5 + Kotest + Testcontainers, Gradle Kotlin DSL, Docker Compose
 
-**Spec Documents:**
-- `docs/01-domain-design.md` — Domain entities, state machines, invariants
-- `docs/02-architecture-decisions.md` — Architecture, concurrency, event design
-- `docs/03-implementation-roadmap.md` — Task overview and dependency graph
+**스펙 문서:**
+- `docs/01-domain-design.md` — 도메인 엔티티, 상태 머신, 불변식
+- `docs/02-architecture-decisions.md` — 아키텍처, 동시성, 이벤트 설계
+- `docs/03-implementation-roadmap.md` — 태스크 개요 및 의존성 그래프
 
-**Base paths:**
-- Project root: `/Users/seongyumin/Documents/study/komsco/`
-- Source: `src/main/kotlin/com/komsco/voucher/`
-- Test: `src/test/kotlin/com/komsco/voucher/`
-- Resources: `src/main/resources/`
-- Test resources: `src/test/resources/`
+**기본 경로:**
+- 프로젝트 루트: `/Users/seongyumin/Documents/study/komsco/`
+- 소스: `src/main/kotlin/com/komsco/voucher/`
+- 테스트: `src/test/kotlin/com/komsco/voucher/`
+- 리소스: `src/main/resources/`
+- 테스트 리소스: `src/test/resources/`
 
 ---
 
-## Task 1: Project Scaffolding & Infrastructure
+## 태스크 1: 프로젝트 초기 설정 및 인프라 구성
 
 **Files:**
 - Create: `build.gradle.kts`
@@ -296,7 +296,7 @@ git commit -m "feat: initialize project with Spring Boot 3.x, Kotlin, Docker Com
 
 ---
 
-## Task 2: Common Module — BaseEntity, Exceptions, Audit Log
+## 태스크 2: 공통 모듈 — BaseEntity, 예외 체계, 감사 로그
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/common/domain/BaseEntity.kt`
@@ -737,7 +737,7 @@ git commit -m "feat: add common module with BaseEntity, exception hierarchy, aud
 
 ---
 
-## Task 3: Region Module
+## 태스크 3: Region 모듈
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/region/domain/Region.kt`
@@ -1114,7 +1114,7 @@ git commit -m "feat: add Region module with entity, policy, service, and API"
 
 ---
 
-## Task 4: Member Module
+## 태스크 4: Member 모듈
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/member/domain/Member.kt`
@@ -1187,7 +1187,7 @@ git commit -m "feat: add Member module with JWT auth and role-based security"
 
 ---
 
-## Task 5: Merchant Module
+## 태스크 5: Merchant 모듈
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/merchant/domain/Merchant.kt`
@@ -1260,7 +1260,7 @@ git commit -m "feat: add Merchant module with state machine and approval flow"
 
 ---
 
-## Task 6: Ledger & Transaction Module ★★
+## 태스크 6: Ledger 및 Transaction 모듈 ★★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/ledger/domain/LedgerEntry.kt`
@@ -1468,7 +1468,7 @@ git commit -m "feat: add Ledger and Transaction modules with immutable double-en
 
 ---
 
-## Task 7: Idempotency Module
+## 태스크 7: 멱등키 모듈
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/common/idempotency/IdempotencyKey.kt`
@@ -1535,7 +1535,7 @@ git commit -m "feat: add idempotency module with Redis+DB dual storage and AOP i
 
 ---
 
-## Task 8: Voucher Module — Issuance ★
+## 태스크 8: Voucher 모듈 — 발행 ★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/domain/Voucher.kt`
@@ -1761,7 +1761,7 @@ git commit -m "feat: add Voucher issuance with distributed lock, atomic region c
 
 ---
 
-## Task 9: Voucher Module — Redemption (Payment) ★★
+## 태스크 9: Voucher 모듈 — 결제(사용) ★★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/application/VoucherRedemptionService.kt`
@@ -1921,7 +1921,7 @@ git commit -m "feat: add voucher redemption with distributed lock + pessimistic 
 
 ---
 
-## Task 10: Voucher Module — Balance Refund ★
+## 태스크 10: Voucher 모듈 — 잔액 환불 ★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/application/VoucherRefundService.kt`
@@ -1949,7 +1949,7 @@ git commit -m "feat: add balance refund with 60% usage threshold and compensatin
 
 ---
 
-## Task 10a: Voucher Module — Withdrawal (청약철회) ★
+## 태스크 10a: Voucher 모듈 — 청약철회 ★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/application/VoucherWithdrawalService.kt`
@@ -1977,7 +1977,7 @@ git commit -m "feat: add 7-day withdrawal (청약철회) with full refund"
 
 ---
 
-## Task 11: Transaction Cancellation & Compensating Transactions ★★
+## 태스크 11: 거래 취소 및 보상 트랜잭션 ★★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/transaction/application/TransactionCancelService.kt`
@@ -2012,7 +2012,7 @@ git commit -m "feat: add transaction cancellation with compensating transactions
 
 ---
 
-## Task 12: Voucher Expiry Scheduler ★
+## 태스크 12: 만료 처리 스케줄러 ★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/voucher/application/VoucherExpiryScheduler.kt`
@@ -2098,7 +2098,7 @@ git commit -m "feat: add voucher expiry scheduler with chunk processing and ledg
 
 ---
 
-## Task 13: Settlement Module ★
+## 태스크 13: 정산 모듈 ★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/merchant/domain/Settlement.kt`
@@ -2174,7 +2174,7 @@ git commit -m "feat: add Settlement module with period-based calculation and ded
 
 ---
 
-## Task 14: Ledger Verification Batch ★★
+## 태스크 14: 원장 정합성 검증 배치 ★★
 
 **Files:**
 - Create: `src/main/kotlin/com/komsco/voucher/ledger/application/LedgerVerificationService.kt`
@@ -2273,7 +2273,7 @@ git commit -m "feat: add ledger verification batch with global + per-voucher bal
 
 ---
 
-## Task 15: Integration Tests — Concurrency & E2E ★
+## 태스크 15: 통합 테스트 — 동시성 및 E2E ★
 
 **Files:**
 - Create: `src/test/kotlin/com/komsco/voucher/integration/ConcurrencyTest.kt`
@@ -2354,7 +2354,7 @@ git commit -m "test: add concurrency, idempotency, and E2E integration tests"
 
 ---
 
-## Task 16: API Documentation & README
+## 태스크 16: API 문서화 및 README 작성
 
 **Files:**
 - Modify: `build.gradle.kts` (add springdoc-openapi dependency)
@@ -2401,9 +2401,9 @@ git commit -m "docs: add Swagger API documentation and portfolio README"
 
 ---
 
-## Appendix A: Additional Implementation Notes
+## 부록 A: 추가 구현 사항
 
-### A1. FailedEvent Entity (Task 2에서 함께 생성)
+### A1. FailedEvent 엔티티 (태스크 2에서 함께 생성)
 
 ```kotlin
 @Entity
@@ -2437,7 +2437,7 @@ class FailedEventRetryScheduler(
 }
 ```
 
-### A2. MANUAL_ADJUSTMENT 엔드포인트 (Task 14 이후 추가 태스크)
+### A2. 수동 원장 조정 엔드포인트 (태스크 14 이후 추가)
 
 **Task 14a: Manual Adjustment API**
 
@@ -2490,7 +2490,7 @@ git add -A
 git commit -m "feat: add manual ledger adjustment with admin authorization and audit trail"
 ```
 
-### A3. Clock 패턴 (테스트 가능성)
+### A3. Clock 주입 패턴 (테스트 가능성)
 
 모든 시간 의존 로직에서 `LocalDateTime.now()` 대신 `Clock`을 주입합니다:
 
@@ -2513,7 +2513,7 @@ voucher.isExpired(fixedClock) shouldBe true
 
 모든 서비스에서 `Clock`을 생성자 주입받아 사용합니다. 이렇게 하면 청약철회 7일 기한, 만료 처리 등의 시간 의존 로직을 결정적으로 테스트할 수 있습니다.
 
-### A4. Flyway 마이그레이션 (Task 1에서 설정)
+### A4. Flyway 마이그레이션 (태스크 1에서 설정)
 
 `build.gradle.kts`에 추가:
 ```kotlin
@@ -2536,21 +2536,21 @@ spring:
 
 ---
 
-## Summary of Critical Implementation Points
+## 핵심 구현 포인트 요약
 
-| Concern | Where to verify |
-|---------|----------------|
-| Ledger recording is synchronous (not event-based) | Task 9 — VoucherRedemptionService calls LedgerService.record() directly |
-| Double-entry always balanced (2-row model) | Task 6 — LedgerService.record() creates debit row + credit row |
-| No deletes, only compensating transactions | Task 11 — TransactionCancelService creates reverse entries |
-| Distributed lock + pessimistic lock dual defense | Task 9 — VoucherLockManager wraps Redisson, repository uses @Lock |
-| Idempotency with dual storage | Task 7 — Redis TTL + DB fallback |
-| CRITICAL audit in BEFORE_COMMIT | Task 2 — AuditEventListener |
-| NON-CRITICAL audit in AFTER_COMMIT + REQUIRES_NEW | Task 2 — AuditEventListener with FailedEvent fallback |
-| Ledger verification catches imbalance | Task 14 — LedgerVerificationService |
-| Manual adjustment requires admin + reason | Task 14a — LedgerAdjustmentService |
-| Concurrent safety proven by tests | Task 15 — ConcurrencyTest with CountDownLatch |
-| Expiry batch: per-voucher independent transactions | Task 12 — VoucherExpiryProcessor with REQUIRES_NEW |
-| Settlement dispute flow | Task 13 — Settlement.dispute() / confirm() |
-| Clock injection for testability | Appendix A3 — all time-dependent logic uses injected Clock |
-| Schema migrations | Appendix A4 — Flyway V1__init_schema.sql |
+| 관심사 | 검증 위치 |
+|--------|----------|
+| 원장 기록은 동기 호출 (이벤트 X) | 태스크 9 — VoucherRedemptionService에서 LedgerService.record() 직접 호출 |
+| 복식부기 항상 균형 (2행 모델) | 태스크 6 — LedgerService.record()가 차변 + 대변 행 생성 |
+| 삭제 없음, 보상 트랜잭션만 사용 | 태스크 11 — TransactionCancelService가 역방향 엔트리 생성 |
+| 분산락 + 비관적 락 이중 방어 | 태스크 9 — VoucherLockManager (Redisson) + @Lock (JPA) |
+| 멱등키 이중 저장 | 태스크 7 — Redis TTL + DB 폴백 |
+| CRITICAL 감사 로그는 BEFORE_COMMIT | 태스크 2 — AuditEventListener |
+| 비핵심 감사 로그는 AFTER_COMMIT + REQUIRES_NEW | 태스크 2 — AuditEventListener + FailedEvent 폴백 |
+| 원장 정합성 검증으로 불일치 탐지 | 태스크 14 — LedgerVerificationService |
+| 수동 원장 조정은 관리자 승인 + 사유 필수 | 태스크 14a — LedgerAdjustmentService |
+| 동시성 안전은 테스트로 증명 | 태스크 15 — ConcurrencyTest (CountDownLatch) |
+| 만료 배치: 건별 독립 트랜잭션 | 태스크 12 — VoucherExpiryProcessor (REQUIRES_NEW) |
+| 정산 이의제기 플로우 | 태스크 13 — Settlement.dispute() / confirm() |
+| Clock 주입으로 테스트 가능성 확보 | 부록 A3 — 모든 시간 의존 로직에 Clock 주입 |
+| 스키마 마이그레이션 | 부록 A4 — Flyway V1__init_schema.sql |

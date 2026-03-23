@@ -1,6 +1,6 @@
-# Phase 3 — Implementation Roadmap
+# 3단계 — 구현 로드맵
 
-## Tech Stack
+## 기술 스택
 
 | 항목 | 기술 |
 |------|------|
@@ -16,7 +16,7 @@
 
 ---
 
-## Task Dependency Graph
+## 태스크 의존성 그래프
 
 ```
 Task 1 (프로젝트 설정)
@@ -39,7 +39,7 @@ Task 1 (프로젝트 설정)
 
 ---
 
-## Task List
+## 태스크 목록
 
 ### Task 1: 프로젝트 초기 설정 및 인프라 구성
 - **Tags:** [INFRA]
@@ -154,7 +154,7 @@ Task 1 (프로젝트 설정)
 
 ---
 
-## Recommended First Task
+## 권장 시작 태스크
 
 **Task 1 (프로젝트 초기 설정)** → 바로 이어서 **Task 2 (공통 모듈)**.
 
@@ -162,7 +162,7 @@ Task 1은 30분이면 끝나고, Task 2의 감사 로그 기반이 갖춰져야 
 
 ---
 
-## README Structure
+## README 구조
 
 ```markdown
 # 모바일 상품권 관리 시스템 (Mobile Voucher Management System)
