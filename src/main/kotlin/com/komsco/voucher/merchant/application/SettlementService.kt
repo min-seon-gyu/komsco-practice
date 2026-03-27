@@ -2,9 +2,13 @@ package com.komsco.voucher.merchant.application
 
 import com.komsco.voucher.common.exception.BusinessException
 import com.komsco.voucher.common.exception.ErrorCode
+import com.komsco.voucher.ledger.application.LedgerService
+import com.komsco.voucher.ledger.domain.AccountCode
+import com.komsco.voucher.ledger.domain.LedgerEntryType
 import com.komsco.voucher.merchant.domain.Settlement
 import com.komsco.voucher.merchant.domain.event.SettlementConfirmedEvent
 import com.komsco.voucher.merchant.infrastructure.SettlementJpaRepository
+import com.komsco.voucher.transaction.application.TransactionService
 import com.komsco.voucher.transaction.domain.TransactionStatus
 import com.komsco.voucher.transaction.domain.TransactionType
 import com.komsco.voucher.transaction.infrastructure.TransactionJpaRepository
@@ -19,6 +23,8 @@ import java.time.LocalTime
 class SettlementService(
     private val settlementRepository: SettlementJpaRepository,
     private val transactionRepository: TransactionJpaRepository,
+    private val transactionService: TransactionService,
+    private val ledgerService: LedgerService,
     private val eventPublisher: ApplicationEventPublisher,
 ) {
 
@@ -50,6 +56,22 @@ class SettlementService(
     fun confirm(settlementId: Long): Settlement {
         val settlement = getById(settlementId)
         settlement.confirm()
+
+        // 정산 확정 시 원장 기록: 가맹점 미수금 → 정산 미지급금
+        val tx = transactionService.create(
+            type = TransactionType.REDEMPTION,
+            amount = settlement.totalAmount,
+            merchantId = settlement.merchantId,
+        )
+        ledgerService.record(
+            debitAccount = AccountCode.SETTLEMENT_PAYABLE,
+            creditAccount = AccountCode.MERCHANT_RECEIVABLE,
+            amount = settlement.totalAmount,
+            transactionId = tx.id,
+            entryType = LedgerEntryType.SETTLEMENT,
+        )
+        tx.complete()
+
         eventPublisher.publishEvent(
             SettlementConfirmedEvent(
                 aggregateId = settlement.id,

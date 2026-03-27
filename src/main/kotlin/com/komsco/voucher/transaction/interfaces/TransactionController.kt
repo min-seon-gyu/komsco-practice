@@ -1,5 +1,6 @@
 package com.komsco.voucher.transaction.interfaces
 
+import com.komsco.voucher.common.api.ApiResponse
 import com.komsco.voucher.common.idempotency.Idempotent
 import com.komsco.voucher.transaction.application.TransactionCancelService
 import com.komsco.voucher.transaction.application.TransactionService
@@ -42,16 +43,16 @@ class TransactionController(
 ) {
 
     @GetMapping("/{id}")
-    fun getById(@PathVariable id: Long): TransactionResponse =
-        TransactionResponse.from(transactionService.getById(id))
+    fun getById(@PathVariable id: Long): ApiResponse<TransactionResponse> =
+        ApiResponse.ok(TransactionResponse.from(transactionService.getById(id)))
 
     @PostMapping("/{id}/cancel")
     @Idempotent
-    fun cancel(@PathVariable id: Long): CancelResponse {
+    fun cancel(@PathVariable id: Long): ApiResponse<CancelResponse> {
         val compensatingId = cancelService.cancel(id)
-        return CancelResponse(
+        return ApiResponse.ok(CancelResponse(
             originalTransactionId = id,
             compensatingTransactionId = compensatingId,
-        )
+        ))
     }
 }

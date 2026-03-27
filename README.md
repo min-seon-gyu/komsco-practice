@@ -51,6 +51,23 @@ merchant ─동기──→ transaction (정산 대상 거래 조회)
 나머지 ──이벤트──→ audit     (비동기, Kafka 전환 가능)
 ```
 
+### Kafka 전환 전략
+
+현재 `ApplicationEventPublisher`로 구현된 이벤트 시스템은 **Kafka로 교체 가능한 구조**로 설계되었다.
+
+| 현재 (모놀리스) | Kafka 전환 시 |
+|---------------|-------------|
+| `ApplicationEventPublisher.publishEvent()` | `KafkaTemplate.send()` |
+| `@TransactionalEventListener` | `@KafkaListener` |
+| 같은 JVM 내 동기/비동기 전달 | 브로커 기반 비동기 전달 |
+
+**원장 기록은 Kafka로 전환하지 않는다.** 잔액 변경과 원장 기록은 같은 DB 트랜잭션에서 동기 처리해야 정합성(I2, I3)이 보장된다. 이벤트 기반으로 전환하면 커밋 후 리스너 실행 전 장애 시 원장 누락이 발생한다.
+
+**Transactional Outbox 패턴 적용 시:**
+1. 이벤트 발행 시점에 `outbox` 테이블에 INSERT (같은 DB 트랜잭션)
+2. CDC(Change Data Capture) 또는 Polling으로 outbox → Kafka 발행
+3. 도메인 코드 변경 없이 인프라 계층만 교체
+
 ---
 
 ## 구현 기능 상세
