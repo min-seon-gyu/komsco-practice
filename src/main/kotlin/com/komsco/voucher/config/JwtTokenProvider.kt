@@ -2,8 +2,10 @@ package com.komsco.voucher.config
 
 import io.jsonwebtoken.Jwts
 import io.jsonwebtoken.security.Keys
+import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Component
+import java.security.SecureRandom
 import java.util.*
 import javax.crypto.SecretKey
 
@@ -12,12 +14,18 @@ class JwtTokenProvider(
     @Value("\${jwt.secret:#{null}}") secret: String?,
     @Value("\${jwt.expiration:86400000}") private val expirationMs: Long,
 ) {
+    private val log = LoggerFactory.getLogger(javaClass)
     private val key: SecretKey
 
     init {
-        val resolvedSecret = secret
-            ?: "local-dev-only-secret-key-minimum-256-bits-long-do-not-use-in-production!!"
-        key = Keys.hmacShaKeyFor(resolvedSecret.toByteArray())
+        if (secret == null) {
+            log.warn("jwt.secret 미설정 — 랜덤 키 생성됨 (재시작 시 기존 토큰 무효화). 프로덕션에서는 반드시 jwt.secret을 설정하세요.")
+            val randomBytes = ByteArray(32)
+            SecureRandom().nextBytes(randomBytes)
+            key = Keys.hmacShaKeyFor(randomBytes)
+        } else {
+            key = Keys.hmacShaKeyFor(secret.toByteArray())
+        }
     }
 
     fun generateToken(memberId: Long, role: String): String {

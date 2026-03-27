@@ -36,21 +36,29 @@ class IdempotencyInterceptor(
         val key = request.getHeader("Idempotency-Key") ?: return true
 
         // 1. Check Redis first (format: "status|body")
-        val rBucket = redissonClient.getBucket<String>("idempotency:$key")
-        val cached = rBucket.get()
-        if (cached != null) {
-            log.info("Idempotency hit (Redis): {}", key)
-            val (status, body) = parseCachedValue(cached)
-            writeCachedResponse(response, body, status)
-            return false
+        try {
+            val rBucket = redissonClient.getBucket<String>("idempotency:$key")
+            val cached = rBucket.get()
+            if (cached != null) {
+                log.info("Idempotency hit (Redis): {}", key)
+                val (status, body) = parseCachedValue(cached)
+                writeCachedResponse(response, body, status)
+                return false
+            }
+        } catch (e: Exception) {
+            log.warn("Redis lookup failed for idempotency key {}, falling back to DB: {}", key, e.message)
         }
 
         // 2. Check DB fallback
         val dbRecord = idempotencyRepository.findByIdempotencyKey(key)
         if (dbRecord != null) {
             log.info("Idempotency hit (DB): {}", key)
-            val cacheValue = "${dbRecord.responseStatus}|${dbRecord.responseBody}"
-            rBucket.set(cacheValue, REDIS_TTL)
+            try {
+                val rBucket = redissonClient.getBucket<String>("idempotency:$key")
+                rBucket.set("${dbRecord.responseStatus}|${dbRecord.responseBody}", REDIS_TTL)
+            } catch (e: Exception) {
+                log.warn("Redis cache restore failed for key {}: {}", key, e.message)
+            }
             writeCachedResponse(response, dbRecord.responseBody, dbRecord.responseStatus)
             return false
         }
@@ -59,10 +67,8 @@ class IdempotencyInterceptor(
     }
 
     fun saveResult(key: String, responseBody: String, status: Int) {
+        // DB 먼저 저장 (영속 저장소 우선)
         try {
-            val rBucket = redissonClient.getBucket<String>("idempotency:$key")
-            rBucket.set("$status|$responseBody", REDIS_TTL)
-
             idempotencyRepository.save(
                 IdempotencyKey(
                     idempotencyKey = key,
@@ -71,7 +77,15 @@ class IdempotencyInterceptor(
                 )
             )
         } catch (e: Exception) {
-            log.error("Failed to save idempotency result for key {}: {}", key, e.message)
+            log.error("Failed to save idempotency key to DB {}: {}", key, e.message)
+        }
+
+        // Redis 캐시 저장 (DB 실패와 독립)
+        try {
+            val rBucket = redissonClient.getBucket<String>("idempotency:$key")
+            rBucket.set("$status|$responseBody", REDIS_TTL)
+        } catch (e: Exception) {
+            log.warn("Failed to cache idempotency key in Redis {}: {}", key, e.message)
         }
     }
 

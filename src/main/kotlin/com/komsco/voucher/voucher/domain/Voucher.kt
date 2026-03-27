@@ -21,10 +21,10 @@ class Voucher(
     @Column(nullable = false, unique = true, length = 19)
     val voucherCode: String,
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 15, scale = 2)
     val faceValue: BigDecimal,
 
-    @Column(nullable = false)
+    @Column(nullable = false, precision = 15, scale = 2)
     var balance: BigDecimal,
 
     @Column(nullable = false)
