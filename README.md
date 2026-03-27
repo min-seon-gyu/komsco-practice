@@ -383,7 +383,7 @@ Swagger UI: `http://localhost:8080/swagger-ui.html`
 ## 실행 방법
 
 ```bash
-# 1. MySQL + Redis 실행
+# 1. 전체 인프라 실행 (MySQL + Redis + Prometheus + Grafana)
 docker compose up -d
 
 # 2. 애플리케이션 실행
@@ -391,10 +391,27 @@ docker compose up -d
 
 # 3. 테스트 실행 (Testcontainers가 MySQL/Redis를 자동 구동)
 ./gradlew test
-
-# 4. Swagger UI 확인
-open http://localhost:8080/swagger-ui.html
 ```
+
+| 서비스 | URL | 설명 |
+|--------|-----|------|
+| Swagger UI | http://localhost:8080/swagger-ui.html | API 문서 |
+| Grafana | http://localhost:3000 (admin/admin) | 모니터링 대시보드 |
+| Prometheus | http://localhost:9090 | 메트릭 직접 쿼리 |
+
+### 모니터링 대시보드
+
+`docker compose up -d` 시 Prometheus + Grafana가 자동 구성된다. Grafana에 접속하면 **Voucher System Dashboard**가 자동 로드되며, 7개 패널로 시스템 상태를 실시간 모니터링할 수 있다.
+
+| 패널 | 의미 |
+|------|------|
+| 결제 처리량 (성공/실패) | 장애 발생 시 실패율 급증 감지 |
+| 결제 지연시간 (p50/p95/p99) | 성능 저하 조기 감지 |
+| 분산락 획득 시간 | Redis 부하/경합 상태 파악 |
+| 락 타임아웃 / Redis Fallback | Redis 장애 발생 여부 확인 |
+| 원장 정합성 | **0이 아니면 즉시 조사 필요** |
+| JVM 메모리 | 메모리 누수 감지 |
+| HTTP 요청량 | 트래픽 패턴 파악 |
 
 ---
 

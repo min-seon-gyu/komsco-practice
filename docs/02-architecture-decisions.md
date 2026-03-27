@@ -341,7 +341,7 @@ CREATE TABLE audit_logs (
 
 ## 8. 운영 모니터링 (Observability)
 
-포트폴리오 버전에서는 기반만 구축하되, 프로덕션 확장 가능한 구조를 보여준다.
+Prometheus + Grafana 기반 모니터링 스택 구성. Docker Compose로 전체 인프라를 한 번에 기동.
 
 ### 메트릭 (Spring Actuator + Micrometer)
 
@@ -355,16 +355,44 @@ CREATE TABLE audit_logs (
 | `ledger.verification.imbalance` | 정합성 검증 불일치 건수 (Gauge) |
 | `idempotency.duplicate.count` | 멱등키 중복 감지 건수 (Counter) |
 
+### 모니터링 인프라 (Docker Compose)
+
+```
+Spring Boot (:8080) → /actuator/prometheus
+        ↑
+Prometheus (:9090)   15초 간격 수집, 시계열 DB 저장
+        ↑
+Grafana (:3000)      대시보드 시각화 (admin/admin)
+```
+
+| 서비스 | 포트 | 용도 |
+|--------|:----:|------|
+| voucher-mysql | 3307 | MySQL 8.0 (기존 3306과 충돌 방지) |
+| voucher-redis | 6380 | Redis 7 (기존 6379와 충돌 방지) |
+| voucher-prometheus | 9090 | 메트릭 수집/저장 |
+| voucher-grafana | 3000 | 대시보드 시각화 |
+
+### Grafana 대시보드 (자동 프로비저닝)
+
+| 패널 | 쿼리 | 의미 |
+|------|------|------|
+| 결제 처리량 | `rate(voucher_redemption_count_total[1m])` | 초당 성공/실패 건수 |
+| 결제 지연시간 | `histogram_quantile(0.95, ...)` | p50/p95/p99 응답 시간 |
+| 분산락 획득 시간 | `lock_acquisition_duration_seconds` | 락 대기 시간 추이 |
+| 락 타임아웃/Fallback | `lock_acquisition_timeout_total` | Redis 장애 감지 |
+| 원장 정합성 | `ledger_verification_imbalance` | 0이 아니면 즉시 조사 |
+| JVM 메모리 | `jvm_memory_used_bytes` | Heap/Non-Heap 사용량 |
+| HTTP 요청량 | `http_server_requests_seconds_count` | 엔드포인트별 처리량 |
+
 ### 헬스체크
 
 - Spring Actuator `/health` 엔드포인트
 - MySQL connectivity, Redis connectivity 자동 포함
-- 커스텀: LedgerVerification 마지막 실행 시간 + 결과
 
 ### 알림 채널
 
-- 포트폴리오: 로그 출력 (SLF4J WARN/ERROR 레벨)
-- 프로덕션 확장 시: Slack/PagerDuty 연동 (ApplicationEventPublisher → 알림 리스너)
+- 현재: Grafana 대시보드 + 로그 출력 (SLF4J WARN/ERROR 레벨)
+- 프로덕션 확장 시: Grafana Alert Rules → Slack/PagerDuty 연동
 
 ---
 
@@ -386,4 +414,4 @@ CREATE TABLE audit_logs (
 
 ---
 
-**2단계 핵심 결정:** 6개 도메인 모듈 + 공통 모듈(api, exception, audit, idempotency) + config(7개). 원장은 동기 호출(이벤트 X), 정산 확정 시에도 원장 기록. 분산락은 Redis 장애 시 DB 락으로 fallback. JWT 인증 필터 + 역할별 접근 제어. Flyway로 스키마 버전 관리. RequestId로 요청 추적. ApiResponse 래퍼로 API 일관성 보장.
+**2단계 핵심 결정:** 6개 도메인 모듈 + 공통 모듈(api, exception, audit, idempotency) + config(7개). 원장은 동기 호출(이벤트 X), 정산 확정 시에도 원장 기록. 분산락은 Redis 장애 시 DB 락으로 fallback. JWT 인증 필터 + 역할별 접근 제어. Flyway로 스키마 버전 관리. RequestId로 요청 추적. ApiResponse 래퍼로 API 일관성 보장. Prometheus + Grafana로 메트릭 수집/시각화.

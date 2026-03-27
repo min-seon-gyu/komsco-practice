@@ -18,7 +18,8 @@
 | Build | Gradle (Kotlin DSL) | - |
 | Infra | Docker Compose (local) | - |
 | DB Migration | Flyway | - |
-| Monitoring | Spring Actuator + Micrometer Prometheus | - |
+| Monitoring | Micrometer + Prometheus + Grafana | Docker Compose |
+| Infra | Docker Compose | MySQL 3307, Redis 6380, Prometheus 9090, Grafana 3000 |
 
 ---
 
@@ -162,7 +163,7 @@ Task 1 (프로젝트 설정)
 
 ## 구현 완료 현황
 
-전체 16개 태스크 모두 구현 완료 + 프로덕션 품질 보완. 총 30개 커밋, 소스 파일 87개(메인), 테스트 파일 13개.
+전체 16개 태스크 모두 구현 완료 + 프로덕션 품질 보완 + 모니터링 구성. 총 32개 커밋, 소스 파일 87개(메인), 테스트 파일 13개.
 
 ---
 
