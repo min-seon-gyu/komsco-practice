@@ -1,12 +1,12 @@
 # 모바일 상품권 시스템 구현 계획
 
-> **상태: 전체 구현 완료** — 16개 태스크 모두 완료, 27개 커밋, 소스 85개 파일, 테스트 13개 파일
+> **상태: 전체 구현 완료 + 프로덕션 품질 보완** — 16개 태스크 완료, 30개 커밋, 소스 87개 파일, 테스트 13개 파일
 
 **목표:** 지역사랑상품권의 발행-유통-정산 전 생애주기를 관리하는 백엔드 시스템 구축. 재무 무결성, 감사 추적성, 동시성 안전을 KOMSCO 포트폴리오로 증명.
 
 **아키텍처:** Aggregate 중심 모듈러 모놀리스, 6개 도메인 모듈 (region, member, merchant, voucher, transaction, ledger) + 공통 모듈 + config. 하이브리드 복식부기 + 동기 원장 기록. 도메인 이벤트는 감사/알림 부수효과에만 사용.
 
-**기술 스택:** Kotlin 1.9.23, Spring Boot 3.2.5, JPA + QueryDSL 5.1.0, MySQL 8.x, Redis (Redisson 3.27.2), JWT (jjwt 0.12.5), Swagger/OpenAPI, JUnit 5 + Kotest 5.8.1 + Testcontainers 1.19.7, Gradle Kotlin DSL, Docker Compose
+**기술 스택:** Kotlin 1.9.23, Spring Boot 3.2.5, JPA + QueryDSL 5.1.0, MySQL 8.x, Redis (Redisson 3.27.2), JWT (jjwt 0.12.5), Flyway, Swagger/OpenAPI, JUnit 5 + Kotest 5.8.1 + Testcontainers 1.19.7, Gradle Kotlin DSL, Docker Compose
 
 **스펙 문서:**
 - `docs/01-domain-design.md` — 도메인 엔티티, 상태 머신, 불변식

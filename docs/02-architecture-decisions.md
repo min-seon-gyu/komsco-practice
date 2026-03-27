@@ -8,10 +8,12 @@ com.komsco.voucher/
 │   ├── domain/
 │   │   ├── BaseEntity.kt              (id, createdAt, updatedAt, version)
 │   │   └── DomainEvent.kt             (이벤트 베이스 클래스)
+│   ├── api/
+│   │   └── ApiResponse.kt              (통일 응답 래퍼: success, data, error)
 │   ├── exception/
 │   │   ├── BusinessException.kt
 │   │   ├── ErrorCode.kt
-│   │   └── GlobalExceptionHandler.kt  (@RestControllerAdvice)
+│   │   └── GlobalExceptionHandler.kt  (@RestControllerAdvice, ApiResponse 기반)
 │   ├── idempotency/
 │   │   ├── IdempotencyKey.kt           (엔티티)
 │   │   ├── IdempotencyRepository.kt
@@ -131,9 +133,11 @@ com.komsco.voucher/
 │       └── LedgerQueryController.kt    (관리자 조회)
 │
 └── config/                          ← 인프라 설정
-    ├── JwtTokenProvider.kt             (JWT 토큰 생성/검증)
+    ├── JwtTokenProvider.kt             (JWT 토큰 생성/검증, SecureRandom 기본키)
+    ├── JwtAuthenticationFilter.kt      (Bearer 토큰 인증 필터)
+    ├── RequestTraceFilter.kt           (MDC requestId + X-Request-Id 응답 헤더)
     ├── RedisConfig.kt
-    ├── SecurityConfig.kt
+    ├── SecurityConfig.kt               (역할별 엔드포인트 접근 제어)
     ├── QueryDslConfig.kt
     └── SwaggerConfig.kt               (OpenAPI/Swagger 문서화)
 ```
@@ -141,7 +145,7 @@ com.komsco.voucher/
 **모듈 간 핵심 의존관계:**
 - `voucher` → `ledger` (동기 호출: 잔액 변경 시 원장 기록)
 - `voucher` → `transaction` (동기 호출: 거래 생성)
-- `merchant` → `transaction` (조회: 정산 대상 거래 조회)
+- `merchant` → `transaction` + `ledger` (동기 호출: 정산 확정 시 원장 기록)
 - 나머지 모듈 간 통신: Domain Event (비동기, Kafka-replaceable)
 
 ---
@@ -150,7 +154,7 @@ com.komsco.voucher/
 
 | Operation | Strategy | Reason | 방지하는 장애 시나리오 |
 |-----------|----------|--------|----------------------|
-| **상품권 사용 (결제)** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락 | 동일 상품권 동시 결제 직렬화 필수. Redis 장애 시 DB 락이 2차 방어 | 이중 사용, 잔액 초과 차감 |
+| **상품권 사용 (결제)** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락. Redis 장애 시 DB 락 단독 fallback | 동일 상품권 동시 결제 직렬화 필수. Redis 장애 시 DB 락이 2차 방어 | 이중 사용, 잔액 초과 차감 |
 | **상품권 발행** | Redisson 분산락 (`member:purchase:{memberId}`) + Redis 원자적 카운터 (`region:monthly:{regionId}:{yyyyMM}`) | Member 락으로 1인 한도 직렬화. Region 한도는 `INCRBY`로 원자적 검증 (락 불필요) | 한도 초과 발행/구매. 데드락 위험 제거 |
 | **잔액 환불** | Redisson 분산락 (`voucher:{id}`) | 사용과 환불 동시 요청 직렬화 | 사용 중 환불 처리 |
 | **청약철회** | Redisson 분산락 (`voucher:{id}`) | 사용과 철회 동시 요청 직렬화 | 사용 중 철회 처리 |
@@ -347,6 +351,7 @@ CREATE TABLE audit_logs (
 | `voucher.redemption.count` | 결제 처리 건수 (Counter, 성공/실패 태그) |
 | `lock.acquisition.duration` | 분산락 획득 대기시간 (Timer) |
 | `lock.acquisition.timeout` | 분산락 타임아웃 건수 (Counter) |
+| `lock.redis.fallback` | Redis 장애로 DB 락 fallback 건수 (Counter) |
 | `ledger.verification.imbalance` | 정합성 검증 불일치 건수 (Gauge) |
 | `idempotency.duplicate.count` | 멱등키 중복 감지 건수 (Counter) |
 
@@ -363,4 +368,22 @@ CREATE TABLE audit_logs (
 
 ---
 
-**2단계 핵심 결정:** 6개 도메인 모듈(region, member, merchant, voucher, transaction, ledger) + 공통 모듈 + config. 원장은 동기 호출(이벤트 X), 발행 시 Member 락 + Region Redis 카운터(데드락 제거), 이벤트는 감사/알림/정산 큐에만 사용, 운영 메트릭 기반 구축. RegionCounterSyncScheduler로 매시간 Redis 카운터 동기화.
+### 요청 추적 (Request Tracing)
+
+- `RequestTraceFilter`: 모든 요청에 UUID 기반 `requestId` 할당
+- `MDC`에 requestId 세팅 → 모든 로그에 자동 포함
+- 응답 헤더 `X-Request-Id`로 클라이언트 반환
+- 장애 추적 시 requestId로 전체 로그 체인 조회 가능
+
+### API 응답 형식
+
+모든 컨트롤러가 통일된 `ApiResponse<T>` 래퍼를 사용:
+
+```json
+{ "success": true, "data": { ... } }
+{ "success": false, "error": { "code": "INSUFFICIENT_BALANCE", "message": "잔액이 부족합니다" } }
+```
+
+---
+
+**2단계 핵심 결정:** 6개 도메인 모듈 + 공통 모듈(api, exception, audit, idempotency) + config(7개). 원장은 동기 호출(이벤트 X), 정산 확정 시에도 원장 기록. 분산락은 Redis 장애 시 DB 락으로 fallback. JWT 인증 필터 + 역할별 접근 제어. Flyway로 스키마 버전 관리. RequestId로 요청 추적. ApiResponse 래퍼로 API 일관성 보장.
