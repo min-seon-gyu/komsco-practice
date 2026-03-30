@@ -12,6 +12,7 @@ import com.komsco.voucher.transaction.domain.TransactionType
 import com.komsco.voucher.voucher.domain.Voucher
 import com.komsco.voucher.voucher.domain.VoucherCodeGenerator
 import com.komsco.voucher.voucher.domain.event.VoucherIssuedEvent
+import com.komsco.voucher.member.infrastructure.MemberJpaRepository
 import com.komsco.voucher.voucher.infrastructure.VoucherJpaRepository
 import com.komsco.voucher.voucher.infrastructure.VoucherLockManager
 import org.redisson.api.RedissonClient
@@ -26,6 +27,7 @@ import java.time.YearMonth
 @Service
 class VoucherIssueService(
     private val voucherRepository: VoucherJpaRepository,
+    private val memberRepository: MemberJpaRepository,
     private val lockManager: VoucherLockManager,
     private val regionService: RegionService,
     private val codeGenerator: VoucherCodeGenerator,
@@ -38,12 +40,16 @@ class VoucherIssueService(
     @Transactional
     fun issue(memberId: Long, regionId: Long, faceValue: BigDecimal): Voucher {
         return lockManager.withMemberPurchaseLock(memberId) {
+            // DB 비관적 락: Redis 장애 시에도 동일 회원 구매를 직렬화
+            memberRepository.findByIdForUpdate(memberId)
+                ?: throw BusinessException(ErrorCode.ENTITY_NOT_FOUND)
+
             val region = regionService.getById(regionId)
 
             if (region.status != RegionStatus.ACTIVE)
                 throw BusinessException(ErrorCode.REGION_NOT_ACTIVE)
 
-            // Check member purchase limit
+            // Check member purchase limit (DB 락 보유 상태에서 조회 → race condition 방지)
             val totalPurchased = voucherRepository.sumFaceValueByMemberAndRegion(memberId, regionId)
             if (totalPurchased + faceValue > region.policy.purchaseLimitPerPerson)
                 throw BusinessException(ErrorCode.MEMBER_PURCHASE_LIMIT_EXCEEDED)
