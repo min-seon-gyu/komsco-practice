@@ -27,12 +27,14 @@ class TransactionCancelService(
     @Transactional
     fun cancel(transactionId: Long): Long {
         val original = transactionService.getById(transactionId)
-        original.requestCancel()
 
         val voucherId = original.voucherId
             ?: throw BusinessException(ErrorCode.INVALID_INPUT, "상품권 거래만 취소할 수 있습니다")
 
         return lockManager.withVoucherLock(voucherId) {
+            // 락 안에서 상태 변경 — 동시 취소 요청 직렬화
+            original.requestCancel()
+
             // Create compensating transaction
             val compensating = transactionService.create(
                 type = TransactionType.CANCELLATION,

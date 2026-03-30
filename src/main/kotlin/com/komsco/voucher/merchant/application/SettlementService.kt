@@ -59,7 +59,7 @@ class SettlementService(
 
         // 정산 확정 시 원장 기록: 가맹점 미수금 → 정산 미지급금
         val tx = transactionService.create(
-            type = TransactionType.REDEMPTION,
+            type = TransactionType.SETTLEMENT,
             amount = settlement.totalAmount,
             merchantId = settlement.merchantId,
         )

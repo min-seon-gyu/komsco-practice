@@ -101,6 +101,7 @@ class Voucher(
     }
 
     fun restoreBalance(amount: BigDecimal) {
+        require(balance + amount <= faceValue) { "복원 후 잔액이 액면가를 초과할 수 없습니다" }
         balance += amount
         status = if (balance == faceValue) VoucherStatus.ACTIVE else VoucherStatus.PARTIALLY_USED
     }
