@@ -155,9 +155,10 @@ com.komsco.voucher/
 | Operation | Strategy | Reason | 방지하는 장애 시나리오 |
 |-----------|----------|--------|----------------------|
 | **상품권 사용 (결제)** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락. Redis 장애 시 DB 락 단독 fallback | 동일 상품권 동시 결제 직렬화 필수. Redis 장애 시 DB 락이 2차 방어 | 이중 사용, 잔액 초과 차감 |
-| **상품권 발행** | Redisson 분산락 (`member:purchase:{memberId}`) + Redis 원자적 카운터 (`region:monthly:{regionId}:{yyyyMM}`) | Member 락으로 1인 한도 직렬화. Region 한도는 `INCRBY`로 원자적 검증 (락 불필요) | 한도 초과 발행/구매. 데드락 위험 제거 |
-| **잔액 환불** | Redisson 분산락 (`voucher:{id}`) | 사용과 환불 동시 요청 직렬화 | 사용 중 환불 처리 |
-| **청약철회** | Redisson 분산락 (`voucher:{id}`) | 사용과 철회 동시 요청 직렬화 | 사용 중 철회 처리 |
+| **상품권 발행** | Redisson 분산락 (`member:purchase:{memberId}`) + DB 비관적 락 (`Member SELECT FOR UPDATE`) + Redis 원자적 카운터 (`region:monthly:{regionId}:{yyyyMM}`) | Member 분산락 + DB 락 이중 방어로 1인 한도 직렬화. Region 한도는 `INCRBY`로 원자적 검증 (락 불필요) | 한도 초과 발행/구매. 데드락 위험 제거 |
+| **잔액 환불** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락 | 사용과 환불 동시 요청 직렬화 | 사용 중 환불 처리 |
+| **청약철회** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락 | 사용과 철회 동시 요청 직렬화 | 사용 중 철회 처리 |
+| **거래 취소** | Redisson 분산락 (`voucher:{id}`) + DB 비관적 락. 상태 변경은 락 안에서 실행 | 동시 취소 요청 직렬화. `restoreBalance()` 시 잔액 > 액면가 검증 | 이중 취소, 잔액 초과 복원 |
 | **만료 처리 (배치)** | DB 비관적 락 (`SELECT FOR UPDATE`) | 배치와 실시간 결제 경합 방지. 건별 처리이므로 분산락 불필요 | 만료 중 결제 경합 |
 | **가맹점 등록/수정** | JPA Optimistic Lock (`@Version`) | 충돌 빈도 낮음. 동시 수정 시 재시도로 충분 | 동시 상태 변경 |
 | **정산 생성** | DB Unique Constraint (`merchant_id + period`) | 동일 기간 중복 정산 방지 | 중복 정산 |
